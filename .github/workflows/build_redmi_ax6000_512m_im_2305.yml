@@ -1,0 +1,239 @@
+#
+# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+# https://github.com/P3TERX/Actions-OpenWrt
+# Description: Build OpenWrt using GitHub Actions
+#
+
+name: Build redmi_ax6000 512m im 23.05 actions.
+
+on:
+  workflow_dispatch:
+#   schedule:
+#     - cron: '0 4 * * *'
+
+env:
+  # padavanonly 2410
+  IM2305_REPO_URL: ${{ secrets.IM2305_REPO_URL }}
+  IM2305_REPO_BRANCH: ${{ secrets.IM2305_REPO_BRANCH }}
+  IM2305_REPO_PATCH: ${{ secrets.IM2305_REPO_PATCH }}
+  # redmi-ax6000
+  RMAX6000_512_IM2305_HOSTNAME: ${{ secrets.RMAX6000_512_IM2305_HOSTNAME }}
+  RMAX6000_512_IM2305_PACKAGE: ${{ secrets.RMAX6000_512_IM2305_PACKAGE }}
+  RMAX6000_512_IM2305_CONFIG: ${{ secrets.RMAX6000_512_IM2305_CONFIG }}
+  # other
+  ACCESS_SHA512SUM: ${{ secrets.ACCESS_SHA512SUM }}
+  ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+  ARGON_THEME_XIAOMI: ${{ secrets.ARGON_THEME_XIAOMI }}
+  INSTALL_FEEDS: ${{ secrets.INSTALL_FEEDS }}
+  FIRMWARE_PATCH: ${{ secrets.FIRMWARE_PATCH }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  UPLOAD_FIRMWARE: true
+  UPLOAD_RELEASE: true
+  UPLOAD_WENSHUSHU: true
+  TZ: "America/Los_Angeles"
+  
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+      with:
+        fetch-depth: 0
+
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+
+    - name: Check Server Performance
+      run: |
+        echo "警告する⚠"
+        echo "割り当てられたサーバーのパフォーマンスには制限があります。プラグインを選択しすぎる場合は、CPU パフォーマンスに注意してください。"
+        echo -e "既知のCPUモデル（降順）: 7763，8370C，8272CL，8171M，E5-2673\n"
+        echo "-------------------------CPU 情報---------------------------"
+        echo "CPUの物理数  : $(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo "CPUコア数    : $(nproc)"
+        echo -e "CPUモデル情報:$(cat /proc/cpuinfo | grep -m1 name | awk -F: '{print $2}')\n"
+        echo "------------------------メモリ情報--------------------------"
+        echo "メモリの詳細:"
+        echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
+        echo "---------------------ハードディスク情報---------------------"
+        echo "ハードディスク容量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt -yqq update
+        sudo -E apt -yqq full-upgrade
+        sudo -E apt -yqq autoremove --purge
+        sudo -E apt -yqq autoclean
+        sudo -E apt -yqq clean
+        sudo -E apt -yqq install zip dos2unix libfuse-dev
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        sudo -E systemctl daemon-reload
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+        echo "FIRMWARE_VERSION=$(date +"%y%m%d")" >> $GITHUB_ENV
+        echo "START_DATE=$(date +'%Y%m%d %H%M')" >> $GITHUB_ENV
+
+    - name: Clone source code
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone $IM2305_REPO_URL -b $IM2305_REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        cd openwrt
+        ${{ secrets.INSTALL_FEEDS }}
+
+    - name: Cache
+      uses: klever1988/cachewrtbuild@main
+      with:
+        ccache: 'true'
+        toolchain: 'true'
+        skip: 'true'
+        clean: 'false'
+        mixkey: 'mt798x_immortalwrt_2305'
+        prefix: '${{ github.workspace }}/openwrt'
+
+    - name: Updata & install feeds
+      working-directory: ./openwrt
+      run: |
+        ./scripts/feeds update -a
+        rm -rf feeds/packages/lang/golang
+        git clone https://github.com/sbwml/packages_lang_golang -b 24.x feeds/packages/lang/golang
+        ./scripts/feeds install -a
+        ./scripts/feeds install -a
+
+    - name: Load custom configuration
+      run: |
+        ${{ secrets.RMAX6000_512_IM2305_CONFIG }}
+        mv .config openwrt/.config
+        cd openwrt
+        ${{ secrets.IM2305_REPO_PATCH }}
+        ${{ secrets.ARGON_THEME_XIAOMI }}
+        ${{ secrets.FIRMWARE_PATCH }}
+        ${{ secrets.RMAX6000_512_IM2305_HOSTNAME }}
+
+    - name: Download package
+      id: package
+      run: |
+        cd openwrt
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: Compile the firmware
+      id: compile
+      run: |
+        cd openwrt
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        echo "status=success" >> $GITHUB_OUTPUT
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICES
+        [ -s DEVICES ] && echo "DEVICES=$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: send telegram message on push
+      if: steps.compile.outputs.status != 'success' && !cancelled()
+      env:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      run: |
+        curl -i -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&format=markdown&text=⛔%20コンパイルに失敗しました。%20⛔%0A対象ユーザー:%200xACE8%0Aリソース:%20${{ github.repository }}%0Aデバイス:%20${{ env.DEVICES }}%0Aバージョン:%20${{ env.FIRMWARE_VERSION }}."
+
+    - name: Organize files
+      id: organize
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      run: |
+        cd openwrt/bin/targets/*/*
+        ls
+        rm -rf packages
+        rm -rf *.buildinfo
+        rm -rf *kernel.bin
+        rm -rf *.tar.gz
+        rm -rf *factory.bin
+        rm -rf profiles.json
+        rm -rf *.manifest
+        rm -rf sha256sums
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
+#        mv immortalwrt-mediatek-mt7986-xiaomi_redmi-router-ax6000-squashfs-sysupgrade.bin immortalwrt-2305-ryusan-mt7986-xiaomi_redmi-router-ax6000-squashfs-sysupgrade.bin
+#        sha512sums -q -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums immortalwrt-2305-ryusan-mt7986-xiaomi_redmi-router-ax6000-squashfs-sysupgrade
+#        ${{ secrets.RMAX6000_512_IM2305_PACKAGE }}
+
+    - name: Upload Github Action
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true'
+      uses: actions/upload-artifact@main
+      with:
+        name: immortalwrt-2305-ryusan-mt7986-xiaomi_redmi-router-ax6000-squashfs-sysupgrade${{ env.FILE_DATE }}
+        path: ${{ env.FIRMWARE }}
+
+#    - name: Telegram notification
+#      if: steps.compile.outputs.status == 'success' && !cancelled()
+#      run: |
+#        curl -i -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&format=markdown&text=✅%20コンパイルに成功しました!%20✅%0A対象ユーザー:%200xACE8%0Aリソース:%20${{ github.repository }}%0Aデバイス:%20${{ env.DEVICE_NAME }}%0Aファームウェア名前:%20openwrt-2410-ryusan-mt7986-xiaomi_redmi-ax6000-512m-ubootlayout-squashfs-sysupgrade.bin."
+
+    - name: Telegram notification
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_WENSHUSHU == 'true' && !cancelled()
+      run: |
+        cd openwrt
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer wss -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
+        echo "::warning file=wenshushu.cn::$(cat wenshushu.log | grep https)" > WENSHUSHU
+        [ -s WENSHUSHU ] && echo "WENSHUSHU=_$(cat WENSHUSHU)" >> $GITHUB_ENV
+        curl -i -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&format=markdown&text=✅%20ファームウェアが正常にコンパイルされました。%20✅%0A対象ユーザー:%200xACE8%0Aリソース:%20${{ github.repository }}%0Aデバイス:%20${{ env.DEVICES }}%0Aファームウェア名前:immortalwrt-2305-ryusan-mt7986-xiaomi_redmi-router-ax6000-squashfs-sysupgrade${{ env.FILE_DATE }}%0Aウェンおじさん:%20'${{ env.WENSHUSHU }}'%20'$WENSHUSHU'."
+
+    - name: Generate Release tag
+      id: tag
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        touch release.txt
+        echo "デバイス:  ${{ env.DEVICES }}" >> release.txt
+        echo " " >> release.txt
+        echo "        警告する⚠" >> release.txt
+        echo " " >> release.txt
+        echo "        現在のリポジトリによってコンパイルされたファームウェアはすべて非公開でカスタマイズされています。" >> release.txt
+        echo "        強制フラッシュによってデバイスが損傷した場合、このリポジトリはデバイスの損傷について一切責任を負いません。" >> release.txt
+        echo "release_tag=${{ env.DEVICES }}-${{ env.FILE_DATE }}" >> $GITHUB_OUTPUT
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: Release Firmware
+      uses: softprops/action-gh-release@v2.1.0
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        files: ${{ env.FIRMWARE }}/*
+        name: immortalwrt-2305-ryusan-mt7986-xiaomi_redmi-router-ax6000-squashfs-sysupgrade${{ env.FILE_DATE }}
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        
+    - name: Delete workflow runs
+      uses: Mattraks/delete-workflow-runs@main
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 7
+        keep_minimum_runs: 3
+        
