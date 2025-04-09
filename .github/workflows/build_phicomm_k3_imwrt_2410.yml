@@ -124,6 +124,12 @@ jobs:
           sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
         fi
 
+    - name: install turboacc and patch
+      working-directory: ./openwrt
+      run: |
+        curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh
+        sed -i 's/Turbo ACC 网络加速/网络加速/g' package/turboacc/luci-app-turboacc/po/zh-cn/turboacc.po
+
     - name: Generate Variables (変数を生成する)
       run: |
         SOURCE_REPO="$(echo $IMWRTSS_REPO_URL | awk -F '/' '{print $(NF)}')"
