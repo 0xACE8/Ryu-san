@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build phicomm k3 imwrt 24.10.0 actions.
+name: Build phicomm k3 imwrt snapshots actions.
 
 on:
   workflow_dispatch:
@@ -16,11 +16,11 @@ on:
 #     - cron: '0 4 * * *'
 
 env:
-  # immortalwrt 2410
+  # immortalwrt snapshots
   IMWRTSS_REPO_URL: ${{ secrets.IMWRTSS_REPO_URL }}
   IMWRTSS_REPO_BRANCH: ${{ secrets.IMWRTSS_REPO_BRANCH }}
   IMWRTSS_REPO_PATCH: ${{ secrets.IMWRTSS_REPO_PATCH }}
-  # virtual machines x64
+  # phicomm k3
   PCK3_IMWRTSS_HOSTNAME: ${{ secrets.PCK3_IMWRTSS_HOSTNAME }}
   PCK3_IMWRTSS_PACKAGE: ${{ secrets.PCK3_IMWRTSS_PACKAGE }}
   PCK3_IMWRTSS_CONFIG: ${{ secrets.PCK3_IMWRTSS_CONFIG }}
