@@ -29,7 +29,7 @@ env:
   # diy script
   FIRMWARE_DIY_SCRIPT: ${{ secrets.FIRMWARE_DIY_SCRIPT }}
   # cmcc color theme
-  ARGON_THEME_RPI: ${{ secrets.ARGON_THEME_RPI }}
+  ARGON_THEME_PCM: ${{ secrets.ARGON_THEME_PCM }}
   # token
   ACCESS_SHA512SUM: ${{ secrets.ACCESS_SHA512SUM }}
   ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
@@ -154,7 +154,7 @@ jobs:
         ${{ secrets.IMWRTSS_REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
         ${{ secrets.PCK3_IMWRTSS_HOSTNAME }}
-        ${{ secrets.ARGON_THEME_RPI }}
+        ${{ secrets.ARGON_THEME_PCM }}
 
     - name: Download package (パッケージをダウンロード)
       id: package
