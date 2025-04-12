@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build redmi_ax6000 512m imwrt snapshots actions.
+name: Build cmcc-xr30 neko 24.10 hnat actions.
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ env:
   IMWRTSS_REPO_URL: ${{ secrets.IMWRTSS_REPO_URL }}
   IMWRTSS_REPO_BRANCH: ${{ secrets.IMWRTSS_REPO_BRANCH }}
   IMWRTSS_REPO_PATCH: ${{ secrets.IMWRTSS_REPO_PATCH }}
-  # redmi-ax6000 512mb
+  # redmi ax60000 512mb
   RM_AX6000_512_IMWRTSS_HOSTNAME: ${{ secrets.RM_AX6000_512_IMWRTSS_HOSTNAME }}
   RM_AX6000_512_IMWRTSS_PACKAGE: ${{ secrets.RM_AX6000_512_IMWRTSS_PACKAGE }}
   RM_AX6000_512_IMWRTSS_CONFIG: ${{ secrets.RM_AX6000_512_IMWRTSS_CONFIG }}
@@ -28,7 +28,7 @@ env:
   ADD_FEED_SOURCE: ${{ secrets.ADD_FEED_SOURCE }}
   # diy script
   FIRMWARE_DIY_SCRIPT: ${{ secrets.FIRMWARE_DIY_SCRIPT }}
-  # xiaomi color theme
+  # cmcc color theme
   ARGON_THEME_XIAOMI: ${{ secrets.ARGON_THEME_XIAOMI }}
   # token
   ACCESS_SHA512SUM: ${{ secrets.ACCESS_SHA512SUM }}
@@ -39,11 +39,12 @@ env:
   # upload options
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: false
-  UPLOAD_WENSHUSHU: false
   CACHE_TOOLCHAIN: true
-  FIRMWARE_TAG: mt7986a
-  SOURCE_CODE: immortalwrt
+  # hardware & repo info
   DEVICE_NAME: Redmi-AX6000-512mb
+  CPU_TAG: mt7986a
+  FLASH_TAG: SPI_NAND_512Mb
+  SOURCE_CODE: immortalwrt
   OUTPUT_FILENAME: immortalwrt-2410ss-ryusan-mt7986a-redmi-ax6000-512mb-sysupgrade
   TZ: "Asia/Tokyo"
 
@@ -89,7 +90,7 @@ jobs:
 #    - name: Combine Disks (ディスクを結合する)
 #      uses: easimon/maximize-build-space@master
 #      with:
-#        swap-size-mb: 1024
+#        swap-size-mb: 2048
 #        temp-reserve-mb: 100
 #        root-reserve-mb: 25600
 
@@ -180,25 +181,29 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
         echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
+    - name: View Disk Usage (ディスク使用量の表示)
+      if: (!cancelled())
+      run: df -hT
+
     - name: Telegram notify when compilation error (コンパイルエラーが発生したときにTelegramを使用して通知する)
       if: steps.compile.outputs.status != 'success' && !cancelled()
       env:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       run: |
-        curl -i -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&format=markdown&text=⛔%20コンパイルに失敗しました...%20⛔%0A-%20🛜デバイス:%20${{ env.DEVICE_NAME }}%0A-%20🗼ソースコード:%20${{ env.SOURCE_REPO }}%0A-%20🔀ブランチ:%20${{ secrets.IMWRTSS_REPO_BRANCH }}%0A"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=❌%20コンパイルに失敗しました！%20❌%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・❌エラーの時間:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Organize files (ファイルを整理する)
       id: organize
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
+        ls | grep -v *sysupgrade.bin | xargs rm -rdf
+        mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
+        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.bin
+        ${{ secrets.RM_AX6000_512_IMWRTSS_PACKAGE }}
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
-#        ls | grep -v *sysupgrade.bin | xargs rm -rdf
-#        mv *sysupgrade.bin ${{ env.OUTPUT_FILENAME }}.bin
-#        sha512sums -q -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.bin > /dev/null 2>&1
-#        ${{ secrets.RM_AX6000_512_IMWRTSS_PACKAGE }}
 
     - name: Upload Firmware To Artifact (Artifactにアップロードする)
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true'
@@ -207,40 +212,35 @@ jobs:
         name: ${{ env.OUTPUT_FILENAME }}_${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
-    - name: Telegram notification (テレグラム通知)
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_WENSHUSHU == 'true' && !cancelled()
+    - name: Telegram notify when compilation complete (コンパイルが成功したらテレグラムを使用して通知する)
+      if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        cd openwrt
-        curl -fsSL git.io/file-transfer | sh
-        ./transfer wss -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
-        WENSHUSHU=$(cat wenshushu.log | grep 'Download Link:' | cut -d' ' -f3-)
-        echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
-        curl -i -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&format=markdown&text=✅%20ファームウェアが正常にコンパイルされました。%20✅%0A-%20🛜デバイス:%20${{ env.DEVICE_NAME }}%0A-%20🗼ソースコード:%20${{ env.SOURCE_REPO }}%0A-%20🔀ブランチ:%20${{ secrets.IMWRTSS_REPO_BRANCH }}.%0A-%20📦ファームウェア名前:%20${{ env.OUTPUT_FILENAME }}_${{ env.FILE_DATE }}%0A-%20👨‍💻ウェンおじさん:%20${{ env.WENSHUSHU }}"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}_${{ env.FILE_DATE }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Generate Release Tag (タグを生成する)
       run: |
-        RELEASE_TAG="$FIRMWARE_TAG-$DEVICE_NAME-$FILE_DATE"
+        RELEASE_TAG="$CPU_TAG-$DEVICE_NAME-$FILE_DATE"
         echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
 
     - name: Upload Firmware To Release (ファームウェアをアップロードする)
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
       uses: ncipollo/release-action@v1
       with:
-        name: ${{ env.FIRMWARE_TAG }}_${{ env.DEVICE_NAME }}_${{ env.FILE_DATE }}
+        name: ${{ env.CPU_TAG }}_${{ env.DEVICE_NAME }}_${{ env.FILE_DATE }}
         allowUpdates: false
         tag: ${{ env.RELEASE_TAG }}
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: ${{ env.FIRMWARE }}/*
         body: |
-          **この${{ env.SOURCE_CODE }}ファームウェアはルータ${{ env.FIRMWARE_TAG }}専用です.**
-          ### 📒 ${{ env.SOURCE_CODE }}の公式メインラインソースコードに基づいてコンパイルされたファームウェア.
-          - これはRedmi-ax6000の大きなパーティション✅512mb uboot✅専用ファームウェアです.
-          - 🛜 デ バ イ ス: ${{ env.DEVICE_NAME }}
-          - 👨‍💻 ソースコード: ${{ env.SOURCE_CODE }}
-          - 📦 リポジトリ : ${{ env.SOURCE_REPO }}
-          - 🔀 ブ ラ ン チ: ${{ secrets.PONLY2410_REPO_BRANCH }}
-          - 🌐 ア ド レ ス: 192.168.6.1 または immortalwrt.lan
-          - 🔑 パスワード : なし
+          **このファームウェアは、CPU「${{ env.CPU_TAG }}」モデル「${{ env.DEVICE_NAME }}」を搭載したルーター✅ ${{ env.FLASH_TAG }} ✅にのみ適しています。**
+          ### 📒「${{ env.SOURCE_CODE }}」リポジトリのソースコードからコンパイルされたファームウェア。
+          - 🛜 支援デバイス: ${{ env.DEVICE_NAME }}
+          - 💽 フラッシュは: ${{ env.FLASH_TAG }}
+          - 📝 ソースコード: ${{ env.SOURCE_CODE }}
+          - 📦 リポジトリを: ${{ env.SOURCE_REPO }}
+          - 🔀 ブランチ名前: ${{ secrets.IMWRTSS_REPO_BRANCH }}
+          - 🌐 接続アドレス: 192.168.***.1 または immortalwrt.lan
+          - 🔑 パスワードは: なし
           ### ⚠️ 警告する ⚠️
           - ‼️現在のリポジトリによってコンパイルされたファームウェアはすべて非公開でカスタマイズされています。
           - ⛔️強制フラッシュ⛔️によってデバイスが損傷した場合、このリポジトリはデバイスの損傷について一切責任を負いません。
