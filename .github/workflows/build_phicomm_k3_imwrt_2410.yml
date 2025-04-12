@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build phicomm k3 imwrt snapshots actions.
+name: Build phicomm k3 imwrt 24.10 actions.
 
 on:
   workflow_dispatch:
@@ -197,12 +197,13 @@ jobs:
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
-        ls | grep -v *.gz | xargs rm -rdf
-        mv *.gz ${{ env.OUTPUT_FILENAME }}.gz
-        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.gz
-        ${{ secrets.PCK3_IMWRT2410_PACKAGE }}
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
+#        ls | grep -v *.gz | xargs rm -rdf
+#        mv *.gz ${{ env.OUTPUT_FILENAME }}.gz
+#        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.gz
+#        ${{ secrets.PCK3_IMWRT2410_PACKAGE }}
+
 
     - name: Upload Firmware To Artifact (Artifactにアップロードする)
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true'
