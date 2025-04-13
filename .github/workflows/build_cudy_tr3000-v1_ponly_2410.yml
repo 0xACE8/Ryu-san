@@ -8,27 +8,32 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build cudy_tr3000-v1 ponly 24.10 hnat actions.
+name: Build cudy tr3000 v1 ponly 24.10 actions.
 
 on:
   workflow_dispatch:
+#      inputs:
+#      ssh:
+#        description: 'SSH connection to Actions'
+#        required: true
+#        default: 'false'
 #   schedule:
 #     - cron: '0 4 * * *'
 
 env:
   # padavanonly 2410
   PONLY2410_REPO_URL: ${{ secrets.PONLY2410_REPO_URL }}
-  CUDY_PONLY2410_REPO_BRANCH: ${{ secrets.CUDY_PONLY2410_REPO_BRANCH }}
+  CD_PONLY2410_REPO_BRANCH: ${{ secrets.CD_PONLY2410_REPO_BRANCH }}
   PONLY2410_REPO_PATCH: ${{ secrets.PONLY2410_REPO_PATCH }}
-  # cudy tr3000
-  CUDY_TR3000_PONLY2410_HOSTNAME: ${{ secrets.CUDY_TR3000_PONLY2410_HOSTNAME }}
-  CUDY_TR3000_PONLY2410_PACKAGE: ${{ secrets.CUDY_TR3000_PONLY2410_PACKAGE }}
-  CUDY_TR3000_PONLY2410_CONFIG: ${{ secrets.CUDY_TR3000_PONLY2410_CONFIG }}
+  # cudy tr3000 v1
+  PCK3_PONLY2410_HOSTNAME: ${{ secrets.PCK3_PONLY2410_HOSTNAME }}
+  PCK3_PONLY2410_PACKAGE: ${{ secrets.PCK3_PONLY2410_PACKAGE }}
+  PCK3_PONLY2410_CONFIG: ${{ secrets.PCK3_PONLY2410_CONFIG }}
   # feeds source
   ADD_FEED_SOURCE: ${{ secrets.ADD_FEED_SOURCE }}
   # diy script
   FIRMWARE_DIY_SCRIPT: ${{ secrets.FIRMWARE_DIY_SCRIPT }}
-  # NETCORE color theme
+  # cmcc color theme
   ARGON_THEME_CUDY: ${{ secrets.ARGON_THEME_CUDY }}
   # token
   ACCESS_SHA512SUM: ${{ secrets.ACCESS_SHA512SUM }}
@@ -38,11 +43,13 @@ env:
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
   # upload options
   UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: false
+  UPLOAD_RELEASE: true
   UPLOAD_WENSHUSHU: false
   CACHE_TOOLCHAIN: true
-  FIRMWARE_TAG: mt7981b
-  DEVICE_NAME: cudy_tr3000-v1
+  # hardware & repo info
+  DEVICE_NAME: Cudy-TR3000_v1
+  CPU_TAG: mt7981b
+  SOURCE_CODE: padavanonly
   OUTPUT_FILENAME: padavanonly-2410-ryusan-mt7981b-cudy_tr3000-v1-sysupgrade
   TZ: "Asia/Tokyo"
 
@@ -88,9 +95,9 @@ jobs:
 #    - name: Combine Disks (ディスクを結合する)
 #      uses: easimon/maximize-build-space@master
 #      with:
-#        swap-size-mb: 1024
+#        swap-size-mb: 2048
 #        temp-reserve-mb: 100
-#        root-reserve-mb: 1024
+#        root-reserve-mb: 25600
 
     - name: Initialization environment (初期化環境)
       env:
@@ -112,14 +119,19 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone $PONLY2410_REPO_URL -b $CUDY_PONLY2410_REPO_BRANCH openwrt
+        git clone $PONLY2410_REPO_URL -b $CD_PONLY2410_REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         ${{ secrets.ADD_FEED_SOURCE }}
 
+        # Remove All China download sources (中国からのダウンロードソースを削除する)
+        PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
+        if [ -f "$PROJECT_MIRRORS_FILE" ]; then
+          sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
+        fi
+
     - name: Generate Variables (変数を生成する)
       run: |
-        echo "START_DATE=$(date +'%Y%m%d %H%M')" >> $GITHUB_ENV
         SOURCE_REPO="$(echo $PONLY2410_REPO_URL | awk -F '/' '{print $(NF)}')"
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
 
@@ -127,27 +139,27 @@ jobs:
       if: env.CACHE_TOOLCHAIN == 'true'
       uses: HiGarfield/cachewrtbuild@main
       with:
-        ccache: 'true'
-        mixkey: ${{ env.SOURCE_REPO }}-${{ secrets.CUDY_PONLY2410_REPO_BRANCH }}-${{ env.DEVICE_NAME }}
+        ccache: false
+        mixkey: ${{ env.SOURCE_REPO }}-${{ secrets.CD_PONLY2410_REPO_BRANCH }}-${{ env.DEVICE_NAME }}
         prefix: ${{ github.workspace }}/openwrt
 
     - name: Updata & install feeds (アップデートとフィードのインストール)
       working-directory: ./openwrt
       run: |
-        ./scripts/feeds update -a > /dev/null 2>&1
+        ./scripts/feeds update -a
         rm -rf feeds/packages/lang/golang
         git clone https://github.com/sbwml/packages_lang_golang -b 24.x feeds/packages/lang/golang
-        ./scripts/feeds install -a > /dev/null 2>&1
-        ./scripts/feeds install -a > /dev/null 2>&1
+        ./scripts/feeds install -a
+        ./scripts/feeds install -a
 
     - name: Load custom configuration (カスタム構成を読み込む)
       run: |
-        ${{ secrets.CUDY_TR3000_PONLY2410_CONFIG }}
+        ${{ secrets.PCK3_PONLY2410_CONFIG }}
         mv .config openwrt/.config
         cd openwrt
-        ${{ secrets.CUDY_TR3000_PONLY2410_HOSTNAME }}
         ${{ secrets.PONLY2410_REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
+        ${{ secrets.PCK3_PONLY2410_HOSTNAME }}
         ${{ secrets.ARGON_THEME_CUDY }}
 
     - name: Download package (パッケージをダウンロード)
@@ -166,36 +178,42 @@ jobs:
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
-        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+        echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    - name: Telegram notify when compilation error (コンパイルエラーが発生したときにTelegramを使用して通知する)
+    - name: View Disk Usage (ディスク使用量の表示)
+      if: (!cancelled())
+      run: df -hT
+
+    - name: Telegram notify when compilation error (コンパイルエラーが発生したときにテレグラムを使用して通知する)
       if: steps.compile.outputs.status != 'success' && !cancelled()
       env:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       run: |
-        curl -i -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&format=markdown&text=⛔%20コンパイルに失敗しました。%20⛔%0A-%20🛜デバイス:%20${{ env.DEVICE_NAME }}%0A-%20🗼ソースコード:%20$SOURCE_REPO%0A-%20🔀ブランチ:%20${{ secrets.CUDY_PONLY2410_REPO_BRANCH }}"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=❌%20コンパイルに失敗しました！%20❌%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🗃ブランチ名前:%0A　%20　${{ secrets.CD_PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・❌エラーの時間:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Organize files (ファイルを整理する)
       id: organize
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
-        ls | grep -v *sysupgrade.bin | xargs rm -rdf
-        mv *sysupgrade.bin $OUTPUT_FILENAME.bin
-        sha512sums -q -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums $OUTPUT_FILENAME.bin > /dev/null 2>&1
-        ${{ secrets.CUDY_TR3000_PONLY2410_PACKAGE }}
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
+#        ls | grep -v *.gz | xargs rm -rdf
+#        mv *.gz ${{ env.OUTPUT_FILENAME }}.gz
+#        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.gz
+#        ${{ secrets.PCK3_PONLY2410_PACKAGE }}
+
 
     - name: Upload Firmware To Artifact (Artifactにアップロードする)
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true'
       uses: actions/upload-artifact@main
       with:
-        name: $OUTPUT_FILENAME${{ env.FILE_DATE }}
+        name: ${{ env.OUTPUT_FILENAME }}_${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
-    - name: Telegram notification (テレグラム通知)
+
+    - name: Upload to Wenshushu and Telegram notification (コンパイルが成功したら、ウェンじさんにアップロードし、テレグラムを使用して通知します。)
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_WENSHUSHU == 'true' && !cancelled()
       run: |
         cd openwrt
@@ -203,34 +221,40 @@ jobs:
         ./transfer wss -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
         WENSHUSHU=$(cat wenshushu.log | grep 'Download Link:' | cut -d' ' -f3-)
         echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
-        curl -i -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&format=markdown&text=✅%20ファームウェアが正常にコンパイルされました。%20✅%0A-%20🛜デバイス:%20${{ env.DEVICE_NAME }}%0A-%20🗼ソースコード:%20$SOURCE_REPO%0A-%20🔀ブランチ:%20${{ secrets.CUDY_PONLY2410_REPO_BRANCH }}.%0A-%20📦ファームウェア名前:%20$OUTPUT_FILENAME${{ env.FILE_DATE }}%0A-%20📥ウェンおじさん:%20$WENSHUSHU"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🗃ブランチ名前:%0A　%20　${{ secrets.CD_PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}_${{ env.FILE_DATE }}%0Aーーーーーーーーーーーーーーーーー%0A・📥ウェンじさん: ${{ env.WENSHUSHU }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+
+    - name: Telegram notify when compilation complete (コンパイルが成功したらテレグラムを使用して通知する)
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_WENSHUSHU == 'false' &&  !cancelled()
+      run: |
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🗃ブランチ名前:%0A　%20　${{ secrets.CD_PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}_${{ env.FILE_DATE }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Generate Release Tag (タグを生成する)
       run: |
-        RELEASE_TAG="$FIRMWARE_TAG-$DEVICE_NAME"
+        RELEASE_TAG="$CPU_TAG-$DEVICE_NAME-$FLASH_TAG-$FILE_DATE"
         echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
 
     - name: Upload Firmware To Release (ファームウェアをアップロードする)
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
       uses: ncipollo/release-action@v1
       with:
-        name: $FIRMWARE_TAG-$DEVICE_NAME-${{ env.DATE }}
+        name: ${{ env.CPU_TAG }}_${{ env.DEVICE_NAME }}_${{ env.FILE_DATE }}
         allowUpdates: false
         tag: ${{ env.RELEASE_TAG }}
         token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: ${{ env.FIRMWARE }}/*
         body: |
-          **このPadavanOnlyファームウェアはルータ${{ env.FIRMWARE_TAG }}専用です.**
-          ### 📒 PadavanOnlyの公式メインラインソースコードに基づいてコンパイルされたファームウェア.
-          - これは、ハードウェアNATアクセラレーションをサポートする${{ env.DEVICE_NAME }}のクローズドソースドライバファームウェアです。.
-          - 🛜 デ バ イ ス: ${{ env.DEVICE_NAME }}
-          - 🗼 ソースコード: ${{ secrets.PONLY2410_REPO_URL }}
-          - 🔀 ブ ラ ン チ: ${{ secrets.CUDY_PONLY2410_REPO_BRANCH }}
-          - 🌐 ア ド レ ス: 192.168.6.1 または immortalwrt.lan
-          - 🔑 パスワード : なし
+          **このファームウェアは、CPU「${{ env.CPU_TAG }}」モデル「${{ env.DEVICE_NAME }}」を搭載したルーターにのみ適しています。**
+          ### 📒「${{ env.SOURCE_CODE }}」リポジトリのソースコードからコンパイルされたファームウェア。
+          - 🛜 支援デバイス: ${{ env.DEVICE_NAME }}
+          - 📝 ソースコード: ${{ env.SOURCE_CODE }}
+          - 📦 リポジトリを: ${{ env.SOURCE_REPO }}
+          - 🗃 ブランチ名前: ${{ secrets.CD_PONLY2410_REPO_BRANCH }}
+          - 🌐 接続アドレス: 192.168.***.1 または anna.lan
+          - 🔑 パスワードは: なし
           ### ⚠️ 警告する ⚠️
           - ‼️現在のリポジトリによってコンパイルされたファームウェアはすべて非公開でカスタマイズされています。
           - ⛔️強制フラッシュ⛔️によってデバイスが損傷した場合、このリポジトリはデバイスの損傷について一切責任を負いません。
-        
+
     - name: Delete old workflow runs (古いワークフロー実行を削除する)
       uses: Mattraks/delete-workflow-runs@main
       with:
@@ -238,7 +262,7 @@ jobs:
         repository: ${{ github.repository }}
         retain_days: 7
         keep_minimum_runs: 3
-        
+
     - name: Delete Old Releases (古いリリースを削除する)
       uses: dev-drprasad/delete-older-releases@master
       with:
@@ -246,3 +270,4 @@ jobs:
         delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
