@@ -26,9 +26,9 @@ env:
   CD_PONLY2410_REPO_BRANCH: ${{ secrets.CD_PONLY2410_REPO_BRANCH }}
   PONLY2410_REPO_PATCH: ${{ secrets.PONLY2410_REPO_PATCH }}
   # cudy tr3000 v1
-  PCK3_PONLY2410_HOSTNAME: ${{ secrets.PCK3_PONLY2410_HOSTNAME }}
-  PCK3_PONLY2410_PACKAGE: ${{ secrets.PCK3_PONLY2410_PACKAGE }}
-  PCK3_PONLY2410_CONFIG: ${{ secrets.PCK3_PONLY2410_CONFIG }}
+  CD_TR3000_PONLY2410_HOSTNAME: ${{ secrets.CD_TR3000_PONLY2410_HOSTNAME }}
+  CD_TR3000_PONLY2410_PACKAGE: ${{ secrets.CD_TR3000_PONLY2410_PACKAGE }}
+  CD_TR3000_PONLY2410_CONFIG: ${{ secrets.CD_TR3000_PONLY2410_CONFIG }}
   # feeds source
   ADD_FEED_SOURCE: ${{ secrets.ADD_FEED_SOURCE }}
   # diy script
@@ -154,12 +154,12 @@ jobs:
 
     - name: Load custom configuration (カスタム構成を読み込む)
       run: |
-        ${{ secrets.PCK3_PONLY2410_CONFIG }}
+        ${{ secrets.CD_TR3000_PONLY2410_CONFIG }}
         mv .config openwrt/.config
         cd openwrt
         ${{ secrets.PONLY2410_REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
-        ${{ secrets.PCK3_PONLY2410_HOSTNAME }}
+        ${{ secrets.CD_TR3000_PONLY2410_HOSTNAME }}
         ${{ secrets.ARGON_THEME_CUDY }}
 
     - name: Download package (パッケージをダウンロード)
@@ -202,7 +202,7 @@ jobs:
 #        ls | grep -v *.gz | xargs rm -rdf
 #        mv *.gz ${{ env.OUTPUT_FILENAME }}.gz
 #        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.gz
-#        ${{ secrets.PCK3_PONLY2410_PACKAGE }}
+#        ${{ secrets.CD_TR3000_PONLY2410_PACKAGE }}
 
 
     - name: Upload Firmware To Artifact (Artifactにアップロードする)
