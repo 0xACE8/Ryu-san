@@ -171,9 +171,8 @@ jobs:
     - name: Restore configuration archive (バックアップした構成アーカイブを復元する)
       if: (github.event.inputs.restore_configuration == 'true' && github.event.inputs.restore_configuration != 'false') || contains(github.event.action, 'restore_configuration') && !cancelled()
       run: |
+        cd openwrt
         ${{ secrets.RM_AX6000_512_IMWRT2410_BACKUP }}
-        ls
-        ls files
 
     - name: Download package (パッケージをダウンロード)
       id: package
