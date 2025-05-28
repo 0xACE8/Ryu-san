@@ -63,7 +63,7 @@ env:
   CPU_TAG: mt7986a
   FLASH_TAG: SPI_NAND_512MB
   SOURCE_CODE: immortalwrt
-  OUTPUT_FILENAME: immortalwrt-2410-acesan-mt7986a-redmi_ax6000-512mb-sysupgrade
+  OUTPUT_FILENAME: immortalwrt-2410-ryusan-mt7986a-redmi_ax6000-512mb-20wifi-sysupgrade
   TZ: "Asia/Tokyo"
 
 jobs:
