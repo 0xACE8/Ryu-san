@@ -139,9 +139,8 @@ jobs:
     - name: install turboacc and patch (turboaccとパッチをインストールする)
       working-directory: ./openwrt
       run: |
-        curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh
+        curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh --no-sfe
         sed -i 's/Turbo ACC 网络加速/网络加速/g' package/turboacc/luci-app-turboacc/po/zh-cn/turboacc.po
-#        curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh --no-sfe
         
     - name: Generate Variables (変数を生成する)
       run: |
@@ -260,8 +259,8 @@ jobs:
           - 🌐 接続アドレス: 192.168.***.1
           - 🔑 パスワードは: なし
           - 💝 追加の機能は: デフォルトの20個の Wi-Fi ホットスポットとパスウォール関連の迂回設定。
-          - 🛜 Wi-Fi 名前は: Wifi-01 から Wifi-20 「Wifi-(01から10)は5Gです，Wifi-(11から20)は2.4Gです」。
-          - 🔒 Wi-Fi のキー: zb + Wi-Fi小文字の英語名「例: Wifi-08 のキーは zbwifi-08 です」。
+          - 🛜 Wi-Fiの名前は: Wifi-01 から Wifi-20 「Wifi-01 から Wifi-10 は 5G です，Wifi-11 から Wifi-20 は 2.4G です」。
+          - 🔒 Wi-Fiのキーは: “zb” + “Wi-Fi名前小文字の英語名”「例: Wifi-08 のキーは zbwifi-08 です」。
           ### ⚠️ 警告する ⚠️
           - ‼️現在のリポジトリによってコンパイルされたファームウェアはすべて非公開でカスタマイズされています。
           - ⛔️強制フラッシュ⛔️によってデバイスが損傷した場合、このリポジトリはデバイスの損傷について一切責任を負いません。
