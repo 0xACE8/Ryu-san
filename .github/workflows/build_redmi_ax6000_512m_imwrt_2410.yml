@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build redmi ax6000 512mb imwrt 24.10 actions.
+name: Build redmi ax6000 512mb imwrt 24.10 wifi*20 actions.
 
 on:
   workflow_dispatch:
