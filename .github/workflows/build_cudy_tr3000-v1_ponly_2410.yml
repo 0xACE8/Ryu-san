@@ -176,7 +176,6 @@ jobs:
       if: (github.event.inputs.restore_configuration == 'true' && github.event.inputs.restore_configuration != 'false') || contains(github.event.action, 'restore_configuration') && !cancelled()
       working-directory: ./openwrt
       run: |
-        cd openwrt
         ${{ secrets.CD_TR3000_PONLY2410_BACKUP }}
 
     - name: Download package (パッケージをダウンロード)
