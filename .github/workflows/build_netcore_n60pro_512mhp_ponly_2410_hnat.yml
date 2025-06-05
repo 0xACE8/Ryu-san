@@ -33,10 +33,6 @@ on:
         description: 'Upload Firmware To WENSHUSHU (ウェンおじさんにアップロードする)'
         type: boolean
         default: false
-      cache_toolchain:
-        description: 'Cache Toolchain (キャッシュツールチェーン)'
-        type: boolean
-        default: true
   schedule:
     - cron: '0 10 * * 0'
 
@@ -146,11 +142,10 @@ jobs:
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
 
     - name: Cache Toolchain (キャッシュツールチェーン)
-      if: (github.event.inputs.cache_toolchain == 'true' && github.event.inputs.cache_toolchain  != 'false') || contains(github.event.action, 'cache_toolchain') && !cancelled()
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: false
-        mixkey: ${{ env.SOURCE_CODE }}-${{ secrets.PONLY2410_REPO_BRANCH }}-${{ env.DEVICE_NAME }}
+        mixkey: ${{ env.DEVICE_NAME }}-${{ env.SOURCE_CODE }}-${{ secrets.PONLY2410_REPO_BRANCH }}
         prefix: ${{ github.workspace }}/openwrt
 
     - name: Updata & install feeds (アップデートとフィードのインストール)
@@ -215,8 +210,8 @@ jobs:
       run: |
         cd openwrt/bin/targets/*/*
         ls | grep -v *sysupgrade.bin | xargs rm -rdf
-        mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
-        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.bin
+        mv *.bin ${{ env.OUTPUT_FILENAME }}_${{ env.FILE_DATE }}.bin
+        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}_${{ env.FILE_DATE }}.bin
         ${{ secrets.NC_N60PRO_HP_PONLY2410_PACKAGE }}
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
