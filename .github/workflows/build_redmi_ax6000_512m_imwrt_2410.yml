@@ -29,12 +29,8 @@ on:
         description: 'Upload Firmware To Release (ファームウェアをアップロードする)'
         type: boolean
         default: false
-      cache_toolchain:
-        description: 'Cache Toolchain (キャッシュツールチェーン)'
-        type: boolean
-        default: true
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 4 * * 0'
 
 env:
   # immortalwrt 2410
@@ -148,11 +144,10 @@ jobs:
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
 
     - name: Cache Toolchain (キャッシュツールチェーン)
-      if: (github.event.inputs.cache_toolchain == 'true' && github.event.inputs.cache_toolchain  != 'false') || contains(github.event.action, 'cache_toolchain') && !cancelled()
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: false
-        mixkey: ${{ env.SOURCE_CODE }}-${{ secrets.IMWRT2410_REPO_BRANCH }}-${{ env.DEVICE_NAME }}
+        mixkey: ${{ env.DEVICE_NAME }}-${{ env.SOURCE_CODE }}-${{ secrets.IMWRT2410_REPO_BRANCH }}
         prefix: ${{ github.workspace }}/openwrt
 
     - name: Updata & install feeds (アップデートとフィードのインストール)
@@ -216,8 +211,8 @@ jobs:
       run: |
         cd openwrt/bin/targets/*/*
         ls | grep -v *sysupgrade.bin | xargs rm -rdf
-        mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
-        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.bin
+        mv *.bin ${{ env.OUTPUT_FILENAME }}_${{ env.FILE_DATE }}.bin
+        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}_${{ env.FILE_DATE }}.bin
         ${{ secrets.RM_AX6000_512_IMWRT2410_PACKAGE }}
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
@@ -276,7 +271,7 @@ jobs:
     - name: Delete Old Releases (古いリリースを削除する)
       uses: dev-drprasad/delete-older-releases@master
       with:
-        keep_latest: 15
+        keep_latest: 3
         delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
