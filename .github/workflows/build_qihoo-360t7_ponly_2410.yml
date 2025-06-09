@@ -12,23 +12,45 @@ name: Build qihoo_360t7 108mb ponly 24.10 hnat actions.
 
 on:
   workflow_dispatch:
-#   schedule:
-#     - cron: '0 4 * * *'
+    inputs:
+      restore_configuration:
+        description: 'Restore configuration archive (バックアップした構成アーカイブを復元する)'
+        type: boolean
+        default: false
+      telegram_notify:
+        description: 'Enable Telegram Notify (テレグラム通知を有効にする)'
+        type: boolean
+        default: false
+      upload_firmware:
+        description: 'Upload Firmware To Artifact (アーティファクトにアップロードする)'
+        type: boolean
+        default: false
+      upload_release:
+        description: 'Upload Firmware To Release (リリースをアップロードする)'
+        type: boolean
+        default: false
+      upload_wenshushu:
+        description: 'Upload Firmware To WENSHUSHU (ウェンおじさんにアップロードする)'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 19 * * 1'
 
 env:
-  # ponly 2410
+  # immortalwrt 2410
   PONLY2410_REPO_URL: ${{ secrets.PONLY2410_REPO_URL }}
   PONLY2410_REPO_BRANCH: ${{ secrets.PONLY2410_REPO_BRANCH }}
   PONLY2410_REPO_PATCH: ${{ secrets.PONLY2410_REPO_PATCH }}
-  # qihoo 360t7 108m
+  # netcore n60pro high-power 512mb
   Q360T7_PONLY2410_HOSTNAME: ${{ secrets.Q360T7_PONLY2410_HOSTNAME }}
   Q360T7_PONLY2410_PACKAGE: ${{ secrets.Q360T7_PONLY2410_PACKAGE }}
   Q360T7_PONLY2410_CONFIG: ${{ secrets.Q360T7_PONLY2410_CONFIG }}
+  Q360T7_PONLY2410_BACKUP: ${{ secrets.Q360T7_PONLY2410_BACKUP }}
   # feeds source
   ADD_FEED_SOURCE: ${{ secrets.ADD_FEED_SOURCE }}
   # diy script
   FIRMWARE_DIY_SCRIPT: ${{ secrets.FIRMWARE_DIY_SCRIPT }}
-  # cmcc color theme
+  # netcore color theme
   ARGON_THEME_Q360: ${{ secrets.ARGON_THEME_Q360 }}
   # token
   ACCESS_SHA512SUM: ${{ secrets.ACCESS_SHA512SUM }}
@@ -36,14 +58,11 @@ env:
   # telegram bot
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-  # upload options
-  UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: false
-  UPLOAD_WENSHUSHU: false  
-  CACHE_TOOLCHAIN: true
-  FIRMWARE_TAG: mt7981b
+  # hardware & repo info
+  DEVICE_NAME: Qihoo-360T7
+  CPU_TAG: mt7981b
+  FLASH_TAG: SPI_NAND_128MB
   SOURCE_CODE: padavanonly(237)
-  DEVICE_NAME: Qihoo-360T7_108mb
   OUTPUT_FILENAME: padavanonly-2410-ryusan-mt7981b-qihoo_360t7-sysupgrade
   TZ: "Asia/Tokyo"
 
@@ -86,13 +105,6 @@ jobs:
         echo "---------------------ハードディスク情報---------------------"
         echo "ハードディスク容量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
 
-#    - name: Combine Disks (ディスクを結合する)
-#      uses: easimon/maximize-build-space@master
-#      with:
-#        swap-size-mb: 2048
-#        temp-reserve-mb: 100
-#        root-reserve-mb: 25600
-
     - name: Initialization environment (初期化環境)
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -130,11 +142,10 @@ jobs:
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
 
     - name: Cache Toolchain (キャッシュツールチェーン)
-      if: env.CACHE_TOOLCHAIN == 'true'
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: false
-        mixkey: ${{ env.SOURCE_REPO }}-${{ secrets.PONLY2410_REPO_BRANCH }}-${{ env.DEVICE_NAME }}
+        mixkey: ${{ env.DEVICE_NAME }}-${{ env.SOURCE_CODE }}-${{ secrets.PONLY2410_REPO_BRANCH }}
         prefix: ${{ github.workspace }}/openwrt
 
     - name: Updata & install feeds (アップデートとフィードのインストール)
@@ -156,6 +167,12 @@ jobs:
         ${{ secrets.Q360T7_PONLY2410_HOSTNAME }}
         ${{ secrets.ARGON_THEME_Q360 }}
 
+    - name: Restore configuration archive (バックアップした構成アーカイブを復元する)
+      if: (github.event.inputs.restore_configuration == 'true' && github.event.inputs.restore_configuration != 'false') || contains(github.event.action, 'restore_configuration') && !cancelled()
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.Q360T7_PONLY2410_BACKUP }}
+
     - name: Download package (パッケージをダウンロード)
       id: package
       run: |
@@ -173,18 +190,20 @@ jobs:
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
         echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+        echo "OUTPUT_FILENAME=$OUTPUT_FILENAME_$FILE_DATE" >> $GITHUB_ENV
+        echo $OUTPUT_FILENAME
 
     - name: View Disk Usage (ディスク使用量の表示)
       if: (!cancelled())
       run: df -hT
 
     - name: Telegram notify when compilation error (コンパイルエラーが発生したときにテレグラムを使用して通知する)
-      if: steps.compile.outputs.status != 'success' && !cancelled()
+      if: steps.compile.outputs.status != 'success' && (github.event.inputs.telegram_notify == 'true' && github.event.inputs.telegram_notify != 'false') || contains(github.event.action, 'telegram_notify') && !cancelled()
       env:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       run: |
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d text="*⛔コンパイルに失敗しました⛔*%0Aーーーーーーーーーーーーーーーーー%0A・🛜支援デバイス:%20${{ env.DEVICE_NAME }}%0A・📝ソースコード:%20${{ env.SOURCE_CODE }}%0A・📦リポジトリを:%20${{ env.SOURCE_REPO }}%0A・🔀ブランチ名前:%20${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーー" -d parse_mode="MarkdownV2"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=❌%20コンパイルに失敗しました！%20❌%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・❌エラーの時間:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Organize files (ファイルを整理する)
       id: organize
@@ -192,52 +211,57 @@ jobs:
       run: |
         cd openwrt/bin/targets/*/*
         ls | grep -v *sysupgrade.bin | xargs rm -rdf
-        mv *.bin temp.bin
-        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums temp.bin
+        mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
+        sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.bin
         ${{ secrets.Q360T7_PONLY2410_PACKAGE }}
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload Firmware To Artifact (Artifactにアップロードする)
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true'
+      if: steps.compile.outputs.status == 'success' && (github.event.inputs.upload_firmware == 'true' && github.event.inputs.upload_firmware  != 'false') || contains(github.event.action, 'upload_firmware') && !cancelled()
       uses: actions/upload-artifact@main
       with:
         name: ${{ env.OUTPUT_FILENAME }}_${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
-    - name: Upload to Wenshushu and Telegram notification (コンパイルが成功したら、ウェンじさんにアップロードし、テレグラムを使用して通知します。)
-      if: steps.compile.outputs.status == 'success' && !cancelled()
-      run: |
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d text="*✅コンパイルが成功しました✅*%0Aーーーーーーーーーーーーーーーーー%0A・🛜支援デバイス:%20${{ env.DEVICE_NAME }}%0A・📝ソースコード:%20${{ env.SOURCE_CODE }}%0A・📦リポジトリを:%20${{ env.SOURCE_REPO }}%0A・🔀ブランチ名前:%20${{ secrets.PONLY2410_REPO_BRANCH }}%0A・📁ファイル名前:%20${{ env.OUTPUT_FILENAME}}_${{ env.FILE_DATE }}%0Aーーーーーーーーーーーーー" -d parse_mode="MarkdownV2"
-
     - name: Telegram notify when compilation complete (コンパイルが成功したらテレグラムを使用して通知する)
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_WENSHUSHU == 'false' && !cancelled()
+      if: steps.compile.outputs.status == 'success' && (github.event.inputs.telegram_notify == 'true' && github.event.inputs.telegram_notify != 'false') || contains(github.event.action, 'telegram_notify') && !cancelled()
       run: |
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d text="*✅コンパイルが成功しました✅*%0Aーーーーーーーーーーーーーーーーー%0A・🛜支援デバイス:%20${{ env.DEVICE_NAME }}%0A・📝ソースコード:%20${{ env.SOURCE_CODE }}%0A・📦リポジトリを:%20${{ env.SOURCE_REPO }}%0A・🔀ブランチ名前:%20${{ secrets.PONLY2410_REPO_BRANCH }}%0A・📁ファイル名前:%20${{ env.OUTPUT_FILENAME}}_${{ env.FILE_DATE }}%0Aーーーーーーーーーーーーー" -d parse_mode="MarkdownV2"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}_${{ env.FILE_DATE }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+
+    - name: Telegram notify when compilation complete and upload to wenshushu (コンパイルが成功したらテレグラムを使用して通知し、ウェンおじさんにアップロードする)
+      if: steps.compile.outputs.status == 'success' && (github.event.inputs.upload_wenshushu == 'true' && github.event.inputs.upload_wenshushu != 'false') || contains(github.event.action, 'upload_wenshushu') && !cancelled()
+      working-directory: ./openwrt
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer wss -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
+        WENSHUSHU=$(cat wenshushu.log | grep 'Manage Link:' | cut -d' ' -f3-)
+        echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}_${{ env.FILE_DATE }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・👲🏻ウェンじさん:%0A　%20　$WENSHUSHU%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Generate Release Tag (タグを生成する)
       run: |
-        RELEASE_TAG="$FIRMWARE_TAG-$DEVICE_NAME-$FILE_DATE"
+        RELEASE_TAG="$CPU_TAG-$DEVICE_NAME-$FLASH_TAG-$FILE_DATE"
         echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
 
-    - name: Upload Firmware To Release (ファームウェアをアップロードする)
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
+    - name: Upload Firmware To Release (アーティファクトをアップロードする)
+      if: steps.compile.outputs.status == 'success' && (github.event.inputs.upload_release == 'true' && github.event.inputs.upload_release  != 'false') || contains(github.event.action, 'upload_release') && !cancelled()
       uses: ncipollo/release-action@v1
       with:
-        name: ${{ env.FIRMWARE_TAG }}_${{ env.DEVICE_NAME }}_${{ env.FILE_DATE }}
+        name: ${{ env.CPU_TAG }}_${{ env.DEVICE_NAME }}_${{ env.FLASH_TAG }}_${{ env.FILE_DATE }}
         allowUpdates: false
         tag: ${{ env.RELEASE_TAG }}
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: ${{ env.FIRMWARE }}/*
         body: |
-          **この${{ env.SOURCE_CODE }}ファームウェアはルータ${{ env.FIRMWARE_TAG }}専用です.**
-          ### 📒 ${{ env.SOURCE_CODE }}の公式メインラインソースコードに基づいてコンパイルされたファームウェア.
-          - これはCMCC-XR30の大きなパーティション✅eMMC Version✅専用ファームウェアです.
+          **このファームウェアは、CPU「${{ env.CPU_TAG }}」モデル「${{ env.DEVICE_NAME }}」を搭載したルーター✅ ${{ env.FLASH_TAG }} ✅にのみ適しています。**
+          ### 📒「${{ env.SOURCE_CODE }}」リポジトリのソースコードからコンパイルされたファームウェア。
           - 🛜 支援デバイス: ${{ env.DEVICE_NAME }}
+          - 💽 フラッシュは: ${{ env.FLASH_TAG }}
           - 📝 ソースコード: ${{ env.SOURCE_CODE }}
           - 📦 リポジトリを: ${{ env.SOURCE_REPO }}
           - 🔀 ブランチ名前: ${{ secrets.PONLY2410_REPO_BRANCH }}
-          - 🌐 接続アドレス: 192.168.***.1 または padavanonly.lan
+          - 🌐 接続アドレス: 192.168.6.1
           - 🔑 パスワードは: なし
           ### ⚠️ 警告する ⚠️
           - ‼️現在のリポジトリによってコンパイルされたファームウェアはすべて非公開でカスタマイズされています。
@@ -258,3 +282,5 @@ jobs:
         delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  
