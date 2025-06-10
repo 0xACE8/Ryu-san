@@ -272,8 +272,8 @@ jobs:
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
         repository: ${{ github.repository }}
-        retain_days: 7
-        keep_minimum_runs: 3
+        retain_days: 1
+        keep_minimum_runs: 1
 
     - name: Delete Old Releases (古いリリースを削除する)
       uses: dev-drprasad/delete-older-releases@master
