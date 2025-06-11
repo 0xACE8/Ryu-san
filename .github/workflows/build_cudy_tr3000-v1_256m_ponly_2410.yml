@@ -193,7 +193,7 @@ jobs:
 
     - name: Upgrading variables (Upgrading variables)
       run: |
-        echo "OUTPUT_FILENAME=$OUTPUT_FILENAME_$FILE_DATE >> $GITHUB_ENV
+        echo "OUTPUT_FILENAME=${OUTPUT_FILENAME}_${FILE_DATE} >> $GITHUB_ENV
         echo "$OUTPUT_FILENAME"
 
     - name: View Disk Usage (ディスク使用量の表示)
@@ -232,7 +232,7 @@ jobs:
       run: |
         curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}_${{ env.FILE_DATE }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
-    - name: Telegram notify when compilation complete and upload to wenshushu (コンパイルが成功したらテレグラムを使用して通知し、ウェンおじさんにアップロードする)
+    - name: Upload to wenshushu (ウェンおじさんにアップロードする)
       if: steps.compile.outputs.status == 'success' && (github.event.inputs.upload_wenshushu == 'true' && github.event.inputs.upload_wenshushu != 'false') || contains(github.event.action, 'upload_wenshushu') && !cancelled()
       working-directory: ./openwrt
       run: |
@@ -240,8 +240,12 @@ jobs:
         ./transfer wss -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
         WENSHUSHU=$(cat wenshushu.log | grep 'Manage Link:' | cut -d' ' -f3-)
         echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
-        echo ${{ env.WENSHUSHU }}
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}%0Aーーーーーーーーーーーーーーーーー%0A・👲🏻ウェンじさん:%0A　%20　$WENSHUSHU%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+
+    - name: Telegram notify when upload to wenshushu complete (ウェンおじさんにアップロード成功したらテレグラムを使用して通知し)
+      if: steps.compile.outputs.status == 'success' && (github.event.inputs.upload_wenshushu == 'true' && github.event.inputs.upload_wenshushu != 'false') || contains(github.event.action, 'upload_wenshushu') && !cancelled()
+      working-directory: ./openwrt
+      run: |
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}%0Aーーーーーーーーーーーーーーーーー%0A・👲🏻ウェンじさん:%0A　%20　${{ env.WENSHUSHU }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Generate Release Tag (タグを生成する)
       run: |
