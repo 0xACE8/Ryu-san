@@ -193,8 +193,7 @@ jobs:
 
     - name: Upgrading variables (Upgrading variables)
       run: |
-        echo "OUTPUT_FILENAME=${OUTPUT_FILENAME}_${FILE_DATE} >> $GITHUB_ENV
-        echo "$OUTPUT_FILENAME"
+        echo "OUTPUT_FILENAME=${OUTPUT_FILENAME}_${FILE_DATE}" >> $GITHUB_ENV
 
     - name: View Disk Usage (ディスク使用量の表示)
       if: (!cancelled())
