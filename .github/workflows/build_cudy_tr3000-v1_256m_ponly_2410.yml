@@ -190,8 +190,7 @@ jobs:
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
         echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-        echo "OUTPUT_FILENAME=padavanonly-2410-ryusan-mt7981b-cudy_tr3000-v1-256m-sysupgrade_$(date +"%Y%m%d%H%M") >> $GITHUB_ENV
-        echo ${{ env.OUTPUT_FILENAME }}
+        echo "OUTPUT_FILENAME=$OUTPUT_FILENAME_$(date +"%Y%m%d%H%M") >> $GITHUB_ENV
 
     - name: View Disk Usage (ディスク使用量の表示)
       if: (!cancelled())
