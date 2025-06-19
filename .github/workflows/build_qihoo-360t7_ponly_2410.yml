@@ -162,6 +162,7 @@ jobs:
         ${{ secrets.Q360T7_PONLY2410_CONFIG }}
         mv .config openwrt/.config
         cd openwrt
+        echo "CONFIG_PACKAGE_kmod-mtd-rw=y" >> .config
         ${{ secrets.PONLY2410_REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
         ${{ secrets.Q360T7_PONLY2410_HOSTNAME }}
