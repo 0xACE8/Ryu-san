@@ -216,7 +216,7 @@ jobs:
         ls | grep -v *sysupgrade.bin | xargs rm -rdf
         mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
         sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.bin
-        ${{ secrets.Q360T7_PONLY2410_PACKAGE }}
+        ${{ secrets.Q360T7_PONLY2410_PACKAGE }} ${{ env.OUTPUT_FILENAME }}.bin
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
@@ -245,7 +245,6 @@ jobs:
       if: steps.compile.outputs.status == 'success' && (github.event.inputs.upload_wenshushu == 'true' && github.event.inputs.upload_wenshushu != 'false') || contains(github.event.action, 'upload_wenshushu') && !cancelled()
       working-directory: ./openwrt
       run: |
-        cat ${{ env.WENSHUSHU }}
         curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・👲🏻ウェンじさん:%0A　%20　${{ env.WENSHUSHU }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Generate Release Tag (タグを生成する)
