@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build qihoo_360t7 108mb ponly 24.10 hnat actions.
+name: Build qihoo_360t7 108mb ponly 24.10 5.4 kernel actions.
 
 on:
   workflow_dispatch:
@@ -63,6 +63,7 @@ env:
   CPU_TAG: mt7981b
   FLASH_TAG: SPI_NAND_128MB
   SOURCE_CODE: padavanonly(237)
+  KERNEL_VERSION: 5.4
   OUTPUT_FILENAME: padavanonly-2410-ryusan-mt7981b-qihoo_360t7-sysupgrade
   TZ: "Asia/Tokyo"
 
@@ -194,7 +195,7 @@ jobs:
 
     - name: Upgrading variables (変数のアップグレード)
       run: |
-        echo "OUTPUT_FILENAME=${OUTPUT_FILENAME}_${FILE_DATE}" >> $GITHUB_ENV
+        echo "OUTPUT_FILENAME=${OUTPUT_FILENAME}_${KERNEL_VERSION}_${FILE_DATE}" >> $GITHUB_ENV
 
     - name: View Disk Usage (ディスク使用量の表示)
       if: (!cancelled())
@@ -249,14 +250,14 @@ jobs:
 
     - name: Generate Release Tag (タグを生成する)
       run: |
-        RELEASE_TAG="$CPU_TAG-$DEVICE_NAME-$FLASH_TAG-$FILE_DATE"
+        RELEASE_TAG="$CPU_TAG-$DEVICE_NAME-$FLASH_TAG-$KERNEL_VERSION-$FILE_DATE"
         echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
 
     - name: Upload Firmware To Release (アーティファクトをアップロードする)
       if: steps.compile.outputs.status == 'success' && (github.event.inputs.upload_release == 'true' && github.event.inputs.upload_release  != 'false') || contains(github.event.action, 'upload_release') && !cancelled()
       uses: ncipollo/release-action@v1
       with:
-        name: ${{ env.CPU_TAG }}_${{ env.DEVICE_NAME }}_${{ env.FLASH_TAG }}_${{ env.FILE_DATE }}
+        name: ${{ env.CPU_TAG }}_${{ env.DEVICE_NAME }}_${{ env.FLASH_TAG }}_${{ env.KERNEL_VERSION }}_${{ env.FILE_DATE }}
         allowUpdates: false
         tag: ${{ env.RELEASE_TAG }}
         token: ${{ secrets.GITHUB_TOKEN }}
