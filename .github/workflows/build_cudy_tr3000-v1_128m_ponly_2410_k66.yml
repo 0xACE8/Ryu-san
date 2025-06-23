@@ -43,7 +43,6 @@ env:
   PONLY2410_REPO_PATCH: ${{ secrets.PONLY2410_REPO_PATCH }}
   # cudy tr3000 v1 spi nand 128m
   CD_TR3000_128M_PONLY2410_K66_HOSTNAME: ${{ secrets.CD_TR3000_128M_PONLY2410_K66_HOSTNAME }}
-  CD_TR3000_128M_PONLY2410_PACKAGE: ${{ secrets.CD_TR3000_128M_PONLY2410_PACKAGE }}
   CD_TR3000_128M_PONLY2410_K66_CONFIG: ${{ secrets.CD_TR3000_128M_PONLY2410_K66_CONFIG }}
   CD_TR3000_128M_PONLY2410_BACKUP: ${{ secrets.CD_TR3000_128M_PONLY2410_BACKUP }}
   # feeds source
@@ -55,6 +54,7 @@ env:
   # token
   ACCESS_SHA512SUM: ${{ secrets.ACCESS_SHA512SUM }}
   ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+  REPACKAGE_FIRMWARE: ${{ secrets.REPACKAGE_FIRMWARE }}
   # telegram bot
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -217,7 +217,7 @@ jobs:
         ls | grep -v *sysupgrade.bin | xargs rm -rdf
         mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
         sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.bin
-        ${{ secrets.CD_TR3000_128M_PONLY2410_PACKAGE }} ${{ env.OUTPUT_FILENAME }}.bin
+        ${{ secrets.REPACKAGE_FIRMWARE }} ${{ env.OUTPUT_FILENAME }}.bin
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
