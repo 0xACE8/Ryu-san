@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build netcore_n60pro 512m hp ponly 24.10 hnat actions.
+name: Build netcore_n60pro 512m hp ponly 24.10 kernel 5.4 actions.
 
 on:
   workflow_dispatch:
