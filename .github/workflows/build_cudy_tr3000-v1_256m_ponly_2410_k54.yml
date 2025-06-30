@@ -44,7 +44,7 @@ env:
   # netcore n60pro high-power 512mb
   CD_TR3000_256M_PONLY2410_HOSTNAME: ${{ secrets.CD_TR3000_256M_PONLY2410_HOSTNAME }}
   CD_TR3000_PONLY2410_CONFIG: ${{ secrets.CD_TR3000_PONLY2410_CONFIG }}
-  CD_TR3000_256M_PONLY2410_BACKUP: ${{ secrets.CD_TR3000_256M_PONLY2410_BACKUP }}
+  CD_TR3000_PONLY2410_BACKUP: ${{ secrets.CD_TR3000_PONLY2410_BACKUP }}
   # feeds source
   ADD_FEED_SOURCE: ${{ secrets.ADD_FEED_SOURCE }}
   # diy script
@@ -173,7 +173,7 @@ jobs:
       working-directory: ./openwrt
       run: |
         cd openwrt
-        ${{ secrets.CD_TR3000_256M_PONLY2410_BACKUP }}
+        ${{ secrets.CD_TR3000_PONLY2410_BACKUP }}
 
     - name: Download package (パッケージをダウンロード)
       id: package
