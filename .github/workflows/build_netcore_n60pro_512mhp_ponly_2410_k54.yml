@@ -214,9 +214,9 @@ jobs:
       run: |
         cd openwrt/bin/targets/*/*
         ls | grep -v *sysupgrade.bin | xargs rm -rdf
-        mv *.bin ${{ env.OUTPUT_FILENAME }}
+        mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
         sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.bin
-        ${{ secrets.NC_N60PRO_HP_PONLY2410_PACKAGE }}_${{ env.FILE_DATE }}.bin
+        ${{ secrets.NC_N60PRO_HP_PONLY2410_PACKAGE }} ${{ env.OUTPUT_FILENAME }}.bin
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
