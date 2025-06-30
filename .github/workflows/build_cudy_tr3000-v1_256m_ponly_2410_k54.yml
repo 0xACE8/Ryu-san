@@ -213,7 +213,7 @@ jobs:
         ls | grep -v *sysupgrade.bin | xargs rm -rdf
         mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
         sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILENAME }}.bin
-        ${{ secrets.CD_TR3000_256M_PONLY2410_PACKAGE }} ${{ env.OUTPUT_FILENAME }}.bin
+        ${{ secrets.ACCESS_REPACKAGE_SHA512 }} ${{ env.OUTPUT_FILENAME }}.bin
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
