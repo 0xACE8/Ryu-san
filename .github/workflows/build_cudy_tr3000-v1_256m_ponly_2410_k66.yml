@@ -61,7 +61,7 @@ env:
   # hardware & repo info
   DEVICE_NAME: Cudy-TR3000_v1
   CPU_TAG: mt7981b
-  FLASH_TAG: SPI_NAND_128MB
+  FLASH_TAG: SPI_NAND_256MB
   SOURCE_CODE: padavanonly(237)
   KERNEL_VERSION: kernel_6.6
   OUTPUT_FILENAME: padavanonly-2410-ryusan-mt7981b-cudy_tr3000-v1-256m-kernel6.6-sysupgrade
