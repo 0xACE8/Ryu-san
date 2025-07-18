@@ -80,14 +80,14 @@ jobs:
       with:
         fetch-depth: 0
 
-   - name: Before freeing up disk space (ディスクスペースを解放する前に)
+    - name: Before freeing up disk space (ディスクスペースを解放する前に)
       run: |
         echo "ディスクスペースを解放する前に"
         echo "=============================================================================="
         df -hT
         echo "=============================================================================="
 
-    - name: "Optimize Disk Space (ディスクスペースを最適化する)"
+    - name: Optimize Disk Space (ディスクスペースを最適化する)
       uses: "hugoalh/disk-space-optimizer-ghaction@v0.8.1"
       with:
         operate_sudo: "True"
