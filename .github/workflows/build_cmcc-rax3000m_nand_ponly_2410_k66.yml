@@ -95,6 +95,7 @@ jobs:
     - name: Generate BIN format repo environment variables (BIN形式のリポジトリ環境変数を生成する)
       if: ${{ github.event.inputs.restore_configuration == 'bin' }} && !cancelled()
       run: |
+        cat ${ANNA2410_K66_REPO_URL}
         echo "REPO_URL=${ANNA2410_K66_REPO_URL}" >> $GITHUB_ENV
         echo "REPO_BRANCH=${ANNA2410_K66_REPO_BRANCH}" >> $GITHUB_ENV
         echo "REPO_PATCH=${ANNA2410_K66_REPO_PATCH}" >> $GITHUB_ENV
