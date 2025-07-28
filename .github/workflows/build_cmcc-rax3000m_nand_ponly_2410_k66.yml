@@ -13,6 +13,14 @@ name: Build cmcc rax3000m nand ponly 24.10 kernel 6.6 actions.
 on:
   workflow_dispatch:
     inputs:
+      firmware_format:
+        description: 'Generate firmware format (ファームウェアフォーマットを生成する)'
+        type: choice
+        required: true
+        default: bin
+        options:
+          - bin
+          - itb
       restore_configuration:
         description: 'Restore configuration archive (バックアップした構成アーカイブを復元する)'
         type: boolean
@@ -37,10 +45,14 @@ on:
     - cron: '0 19 * * 0'
 
 env:
+  # anna 2410
+  ANNA2410_K66_REPO_URL: ${{ secrets.ANNA2410_K66_REPO_URL }}
+  ANNA2410_K66_REPO_BRANCH: ${{ secrets.ANNA2410_K66_REPO_BRANCH }}
+  ANNA2410_K66_REPO_PATCH: ${{ secrets.ANNA2410_K66_REPO_PATCH }}
   # padavanonly 2410
-  PONLY2410_REPO_URL: ${{ secrets.PONLY2410_REPO_URL }}
+  PONLY2410_K66_REPO_URL: ${{ secrets.PONLY2410_K66_REPO_URL }}
   PONLY2410_K66_REPO_BRANCH: ${{ secrets.PONLY2410_K66_REPO_BRANCH }}
-  PONLY2410_REPO_PATCH: ${{ secrets.PONLY2410_REPO_PATCH }}
+  PONLY2410_K66_REPO_PATCH: ${{ secrets.PONLY2410_K66_REPO_PATCH }}
   # cmcc rax3000m nand
   CMCC_RAX3000M_NAND_PONLY2410_K66_HOSTNAME: ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_HOSTNAME }}
   CMCC_RAX3000M_NAND_PONLY2410_K66_CONFIG: ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_CONFIG }}
@@ -59,12 +71,12 @@ env:
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
   # hardware & repo info
-  DEVICE_NAME: CMCC-RAX3000M
+  DEVICE_NAME: CMCC-RAX3000M-NAND
   CPU_TAG: mt7981b
   FLASH_TAG: SPI_NAND_128m
   SOURCE_CODE: padavanonly(237)
   KERNEL_VERSION: kernel_6.6
-  OUTPUT_FILENAME: padavanonly-24.10.1-ryu-mt7981b-cmcc-rax3000-nand-kernel6.6-sysupgrade
+  OUTPUT_FILENAME: padavanonly-24.10-ryu-mt7981b-cmcc-rax3000-nand-kernel6.6-sysupgrade
   TZ: "Asia/Tokyo"
 
 jobs:
@@ -79,6 +91,20 @@ jobs:
       uses: actions/checkout@main
       with:
         fetch-depth: 0
+
+    - name: Generate BIN format repo environment variables (BIN形式のリポジトリ環境変数を生成する)
+      if: ${{ github.event.inputs.restore_configuration == 'bin' }} && !cancelled()
+      run: |
+        echo "REPO_URL=${ANNA2410_K66_REPO_URL}" >> $GITHUB_ENV
+        echo "REPO_BRANCH=${ANNA2410_K66_REPO_BRANCH}" >> $GITHUB_ENV
+        echo "REPO_PATCH=${ANNA2410_K66_REPO_PATCH}" >> $GITHUB_ENV
+
+    - name: Generate ITB format repo environment variables (ITB形式のリポジトリ環境変数を生成する)
+      if: ${{ github.event.inputs.restore_configuration == 'itb' }} && !cancelled()
+      run: |
+        echo "REPO_URL=${PONLY2410_K66_REPO_URL}" >> $GITHUB_ENV
+        echo "REPO_BRANCH=${PONLY2410_K66_REPO_BRANCH}" >> $GITHUB_ENV
+        echo "REPO_PATCH=${PONLY2410_K66_REPO_PATCH}" >> $GITHUB_ENV
 
     - name: Free Disk Space (ハードドライブの空き容量を増やす)
       uses: jlumbroso/free-disk-space@main
@@ -126,7 +152,7 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone $PONLY2410_REPO_URL -b $PONLY2410_K66_REPO_BRANCH openwrt
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         ${{ secrets.ADD_FEED_SOURCE }}
@@ -139,14 +165,14 @@ jobs:
 
     - name: Generate Variables (変数を生成する)
       run: |
-        SOURCE_REPO="$(echo $PONLY2410_REPO_URL | awk -F '/' '{print $(NF)}')"
+        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
 
     - name: Cache Toolchain (キャッシュツールチェーン)
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: false
-        mixkey: ${{ env.DEVICE_NAME }}-${{ env.SOURCE_CODE }}-${{ secrets.PONLY2410_K66_REPO_BRANCH }}
+        mixkey: ${{ env.DEVICE_NAME }}-${{ env.SOURCE_CODE }}-${{ secrets.REPO_BRANCH }}
         prefix: ${{ github.workspace }}/openwrt
 
     - name: Updata & install feeds (アップデートとフィードのインストール)
@@ -163,7 +189,7 @@ jobs:
         ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_CONFIG }}
         mv .config openwrt/.config
         cd openwrt
-        ${{ secrets.PONLY2410_REPO_PATCH }}
+        ${{ secrets.REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
         ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_HOSTNAME }}
         ${{ secrets.ARGON_THEME_CMCC }}
@@ -206,7 +232,7 @@ jobs:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       run: |
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=❌%20コンパイルに失敗しました！%20❌%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・🧿カーネル使用:%0A　%20　${{ env.KERNEL_VERSION }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_K66_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・❌エラーの時間:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=❌%20コンパイルに失敗しました！%20❌%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・🧿カーネル使用:%0A　%20　${{ env.KERNEL_VERSION }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・❌エラーの時間:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Organize files (ファイルを整理する)
       id: organize
@@ -231,7 +257,7 @@ jobs:
     - name: Telegram notify when compilation complete (コンパイルが成功したらテレグラムを使用して通知する)
       if: steps.compile.outputs.status == 'success' && steps.organize.outputs.status == 'success' && (github.event.inputs.telegram_notify == 'true' && github.event.inputs.telegram_notify != 'false') || contains(github.event.action, 'telegram_notify') && !cancelled() 
       run: |
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・🧿カーネル使用:%0A　%20　${{ env.KERNEL_VERSION }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_K66_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーーー%0A・🧿カーネル使用:%0A　%20　${{ env.KERNEL_VERSION }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Upload to wenshushu (ウェンおじさんにアップロードする)
       if: steps.compile.outputs.status == 'success' && steps.organize.outputs.status == 'success' && (github.event.inputs.upload_wenshushu == 'true' && github.event.inputs.upload_wenshushu != 'false') || contains(github.event.action, 'upload_wenshushu') && !cancelled()
@@ -246,7 +272,7 @@ jobs:
       if: steps.compile.outputs.status == 'success' && steps.organize.outputs.status == 'success' && (github.event.inputs.upload_wenshushu == 'true' && github.event.inputs.upload_wenshushu != 'false') || contains(github.event.action, 'upload_wenshushu') && !cancelled()
       working-directory: ./openwrt
       run: |
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーー%0A・🧿カーネル使用:%0A　%20　${{ env.KERNEL_VERSION }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_K66_REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}%0Aーーーーーーーーーーーーーーーー%0A・👲🏻ウェンじさん:%0A　%20　${{ env.WENSHUSHU }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.FLASH_TAG }}%0Aーーーーーーーーーーーーーーーー%0A・🧿カーネル使用:%0A　%20　${{ env.KERNEL_VERSION }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.REPO_BRANCH }}%0Aーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILENAME}}%0Aーーーーーーーーーーーーーーーー%0A・👲🏻ウェンじさん:%0A　%20　${{ env.WENSHUSHU }}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Generate Release Tag (タグを生成する)
       run: |
@@ -270,7 +296,7 @@ jobs:
           - 🧿 カーネル使用: ${{ env.KERNEL_VERSION }}
           - 📝 ソースコード: ${{ env.SOURCE_CODE }}
           - 📦 リポジトリを: ${{ env.SOURCE_REPO }}
-          - 🔀 ブランチ名前: ${{ secrets.PONLY2410_K66_REPO_BRANCH }}
+          - 🔀 ブランチ名前: ${{ secrets.REPO_BRANCH }}
           - 🌐 接続アドレス: 192.168.6.1
           - 🔑 パスワードは: なし
           ### ⚠️ 警告する ⚠️
