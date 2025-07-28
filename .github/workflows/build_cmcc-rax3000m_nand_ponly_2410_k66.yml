@@ -95,17 +95,16 @@ jobs:
     - name: Generate BIN format repo environment variables (BIN形式のリポジトリ環境変数を生成する)
       if: ${{ github.event.inputs.restore_configuration == 'bin' }} && !cancelled()
       run: |
-        echo "${ANNA2410_K66_REPO_URL}"
-        echo "REPO_URL=${ANNA2410_K66_REPO_URL}" >> $GITHUB_ENV
-        echo "REPO_BRANCH=${ANNA2410_K66_REPO_BRANCH}" >> $GITHUB_ENV
-        echo "REPO_PATCH=${ANNA2410_K66_REPO_PATCH}" >> $GITHUB_ENV
+        echo "REPO_URL=$ANNA2410_K66_REPO_URL" >> $GITHUB_ENV
+        echo "REPO_BRANCH=$ANNA2410_K66_REPO_BRANCH" >> $GITHUB_ENV
+        echo "REPO_PATCH=$ANNA2410_K66_REPO_PATCH" >> $GITHUB_ENV
 
     - name: Generate ITB format repo environment variables (ITB形式のリポジトリ環境変数を生成する)
       if: ${{ github.event.inputs.restore_configuration == 'itb' }} && !cancelled()
       run: |
-        echo "REPO_URL=${PONLY2410_K66_REPO_URL}" >> $GITHUB_ENV
-        echo "REPO_BRANCH=${PONLY2410_K66_REPO_BRANCH}" >> $GITHUB_ENV
-        echo "REPO_PATCH=${PONLY2410_K66_REPO_PATCH}" >> $GITHUB_ENV
+        echo "REPO_URL=$PONLY2410_K66_REPO_URL" >> $GITHUB_ENV
+        echo "REPO_BRANCH=$PONLY2410_K66_REPO_BRANCH" >> $GITHUB_ENV
+        echo "REPO_PATCH=$PONLY2410_K66_REPO_PATCH" >> $GITHUB_ENV
 
     - name: Free Disk Space (ハードドライブの空き容量を増やす)
       uses: jlumbroso/free-disk-space@main
