@@ -42,9 +42,9 @@ env:
   ANNA2410_K66_REPO_BRANCH: ${{ secrets.ANNA2410_K66_REPO_BRANCH }}
   ANNA2410_K66_REPO_PATCH: ${{ secrets.ANNA2410_K66_REPO_PATCH }}
   # cmcc rax3000m nand
-  CMCC_RAX3000M_NAND_ANNA2410_K66_HOSTNAME: ${{ secrets.CMCC_RAX3000M_NAND_ANNA2410_K66_HOSTNAME }}
-  CMCC_RAX3000M_NAND_ANNA2410_K66_CONFIG: ${{ secrets.CMCC_RAX3000M_NAND_ANNA2410_K66_CONFIG }}
-  CMCC_RAX3000M_NAND_ANNA2410_K66_BACKUP: ${{ secrets.CMCC_RAX3000M_NAND_ANNA2410_K66_BACKUP }}
+  CMCC_RAX3000M_NAND_ANNA2410_K66_HOSTNAME: ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_HOSTNAME }}
+  CMCC_RAX3000M_NAND_ANNA2410_K66_CONFIG: ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_CONFIG }}
+  CMCC_RAX3000M_NAND_ANNA2410_K66_BACKUP: ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_BACKUP }}
   # feeds source
   ADD_FEED_SOURCE: ${{ secrets.ADD_FEED_SOURCE }}
   # diy script
@@ -59,7 +59,7 @@ env:
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
   # hardware & repo info
-  DEVICE_NAME: CMCC-RAX3000M
+  DEVICE_NAME: CMCC-RAX3000M-NAND
   CPU_TAG: mt7981b
   FLASH_TAG: SPI_NAND_128m
   SOURCE_CODE: padavanonly(237)
@@ -160,19 +160,19 @@ jobs:
 
     - name: Load custom configuration (カスタム構成を読み込む)
       run: |
-        ${{ secrets.CMCC_RAX3000M_NAND_ANNA2410_K66_CONFIG }}
+        ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_CONFIG }}
         mv .config openwrt/.config
         cd openwrt
         ${{ secrets.ANNA2410_K66_REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
-        ${{ secrets.CMCC_RAX3000M_NAND_ANNA2410_K66_HOSTNAME }}
+        ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_HOSTNAME }}
         ${{ secrets.ARGON_THEME_CMCC }}
 
     - name: Restore configuration archive (バックアップした構成アーカイブを復元する)
       if: (github.event.inputs.restore_configuration == 'true' && github.event.inputs.restore_configuration != 'false') || contains(github.event.action, 'restore_configuration') && !cancelled()
       working-directory: ./openwrt
       run: |
-        ${{ secrets.CMCC_RAX3000M_NAND_ANNA2410_K66_BACKUP }}
+        ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_BACKUP }}
 
     - name: Download package (パッケージをダウンロード)
       id: package
@@ -214,12 +214,12 @@ jobs:
       run: |
         cd openwrt/bin/targets/*/*
         ls
+        ls | grep -v *sysupgrade.bin | xargs rm -rdf
+        mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
         sha512sums -qq -r -P ${{ secrets.ACCESS_SHA512SUM }} sha512sums *.itb
         ${{ secrets.ACCESS_REPACKAGE_SHA512 }} ${{ env.OUTPUT_FILENAME }}.itb
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
-#        ls | grep -v *sysupgrade.bin | xargs rm -rdf
-#        mv *.bin ${{ env.OUTPUT_FILENAME }}.bin
 
     - name: Upload Firmware To Artifact (Artifactにアップロードする)
       if: steps.compile.outputs.status == 'success' && steps.organize.outputs.status == 'success' && (github.event.inputs.upload_firmware == 'true' && github.event.inputs.upload_firmware  != 'false') || contains(github.event.action, 'upload_firmware') && !cancelled()
