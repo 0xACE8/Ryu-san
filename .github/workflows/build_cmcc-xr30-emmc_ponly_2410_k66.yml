@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build cmcc xr30 emmc ponly 24.10.1 kernel 6.6 actions.
+name: Build cmcc xr30 emmc ponly 24.10 kernel 6.6 actions.
 
 on:
   workflow_dispatch:
@@ -64,7 +64,7 @@ env:
   FLASH_TAG: eMMC_8MB
   SOURCE_CODE: padavanonly(237)
   KERNEL_VERSION: kernel_6.6
-  OUTPUT_FILENAME: padavanonly-24.10.1-ryu-mt7981b-cmcc-xr30-emmc-kernel6.6-sysupgrade
+  OUTPUT_FILENAME: padavanonly-24.10-ryu-mt7981b-cmcc-xr30-emmc-kernel6.6-sysupgrade
   TZ: "Asia/Tokyo"
 
 jobs:
