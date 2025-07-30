@@ -238,7 +238,7 @@ jobs:
       working-directory: ./openwrt
       run: |
         curl -fsSL git.io/file-transfer | sh
-        ./transfer wss -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
+        ./transfer wss -s -p 16 -t 600 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
         WENSHUSHU=$(cat wenshushu.log | grep 'Manage Link:' | cut -d' ' -f3-)
         echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
 
