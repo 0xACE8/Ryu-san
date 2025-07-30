@@ -164,7 +164,7 @@ jobs:
         mv .config openwrt/.config
         cd openwrt
         ${{ secrets.ARGON_THEME_NETCORE }}
-        sed -i 's/reg = <0x580000 0x7280000>/reg = <0x0580000 0x1ea00000>/' target/linux/mediatek/dts/mt7986a-netcore-n60-pro.dts
+        sed -i 's/0x7280000/0x1ea00000/' target/linux/mediatek/dts/mt7986a-netcore-n60-pro.dts
         sed -i '/define Device\/netcore_n60-pro/a \  IMAGE_SIZE := 507904k' target/linux/mediatek/image/filogic.mk
 #        ${{ secrets.PONLY2410_REPO_PATCH }}
 #        ${{ secrets.FIRMWARE_DIY_SCRIPT }}
