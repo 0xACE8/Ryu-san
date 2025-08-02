@@ -42,7 +42,7 @@ env:
   PONLY2410_K66_REPO_BRANCH: ${{ secrets.PONLY2410_K66_REPO_BRANCH }}
   PONLY2410_REPO_PATCH: ${{ secrets.PONLY2410_REPO_PATCH }}
   # netcore n60pro high-power 512mb
-  NC_N60PRO_HP_PONLY2410_K66_HOSTNAME: ${{ secrets.NC_N60PRO_HP_PONLY2410_K66_HOSTNAME }}
+  NC_N60PRO_512M_HP_PONLY2410_K66_HOSTNAME: ${{ secrets.NC_N60PRO_512M_HP_PONLY2410_K66_HOSTNAME }}
   NC_N60PRO_HP_PONLY2410_K66_CONFIG: ${{ secrets.NC_N60PRO_HP_PONLY2410_K66_CONFIG }}
   NC_N60PRO_HP_PONLY2410_BACKUP: ${{ secrets.NC_N60PRO_HP_PONLY2410_BACKUP }}
   # feeds source
@@ -75,6 +75,11 @@ jobs:
       contents: write
 
     steps:
+    - name: This job runs on schedule or if inputs.should_run is true (このジョブはスケジュールどおりに実行されるか、inputs.should_runがtrueの場合に実行されます)
+      with:
+        upload_release: ${{ !contains(inputs.upload_release, 'false') }}
+        upload_wenshushu: ${{ !contains(inputs.upload_wenshushu, 'false') }}
+        
     - name: Checkout (チェックアウト)
       uses: actions/checkout@main
       with:
@@ -165,7 +170,7 @@ jobs:
         cd openwrt
         ${{ secrets.PONLY2410_REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
-        ${{ secrets.NC_N60PRO_HP_PONLY2410_K66_HOSTNAME }}
+        ${{ secrets.NC_N60PRO_512M_HP_PONLY2410_K66_HOSTNAME }}
         ${{ secrets.ARGON_THEME_NETCORE }}
 
     - name: Restore configuration archive (バックアップした構成アーカイブを復元する)
@@ -282,13 +287,13 @@ jobs:
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
         repository: ${{ github.repository }}
-        retain_days: 1
-        keep_minimum_runs: 1
+        retain_days: 0
+        keep_minimum_runs: 0
 
     - name: Delete Old Releases (古いリリースを削除する)
       uses: dev-drprasad/delete-older-releases@master
       with:
-        keep_latest: 15
+        keep_latest: 1
         delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
