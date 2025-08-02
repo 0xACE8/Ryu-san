@@ -75,6 +75,12 @@ jobs:
       contents: write
 
     steps:
+    - name: This job runs on schedule or if inputs.should_run is true (このジョブはスケジュールどおりに実行されるか、inputs.should_runがtrueの場合に実行されます)
+      with:
+        restore_configuration: ${{ !contains(inputs.restore_configuration, 'false') }}
+        upload_release: ${{ !contains(inputs.upload_release, 'false') }}
+        upload_wenshushu: ${{ !contains(inputs.upload_wenshushu, 'false') }}
+
     - name: Checkout (チェックアウト)
       uses: actions/checkout@main
       with:
@@ -282,13 +288,13 @@ jobs:
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
         repository: ${{ github.repository }}
-        retain_days: 1
-        keep_minimum_runs: 1
+        retain_days: 0
+        keep_minimum_runs: 0
 
     - name: Delete Old Releases (古いリリースを削除する)
       uses: dev-drprasad/delete-older-releases@master
       with:
-        keep_latest: 15
+        keep_latest: 1
         delete_tags: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
