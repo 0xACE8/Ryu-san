@@ -75,11 +75,11 @@ jobs:
       contents: write
 
     steps:
-    - name: This job runs on schedule or if inputs.should_run is true (このジョブはスケジュールどおりに実行されるか、inputs.should_runがtrueの場合に実行されます)
-      uses: ./.github/workflows/build_netcore_n60pro_512mhp_ponly_2410_k66.yml
-      with:
-        upload_release: ${{ !contains(inputs.upload_release, 'false') }}
-        upload_wenshushu: ${{ !contains(inputs.upload_wenshushu, 'false') }}
+#    - name: This job runs on schedule or if inputs.should_run is true (このジョブはスケジュールどおりに実行されるか、inputs.should_runがtrueの場合に実行されます)
+#      uses: ./.github/workflows/build_netcore_n60pro_512mhp_ponly_2410_k66.yml
+#      with:
+#        upload_release: ${{ !contains(inputs.upload_release, 'false') }}
+#        upload_wenshushu: ${{ !contains(inputs.upload_wenshushu, 'false') }}
         
     - name: Checkout (チェックアウト)
       uses: actions/checkout@main
