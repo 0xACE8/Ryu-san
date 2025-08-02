@@ -76,7 +76,7 @@ jobs:
 
     steps:
     - name: This job runs on schedule or if inputs.should_run is true (このジョブはスケジュールどおりに実行されるか、inputs.should_runがtrueの場合に実行されます)
-      uses: ./.github/workflows/run-job-with-params.yml
+      uses: ./.github/workflows/build_cudy_tr3000-v1_512m_ponly_2410_k66.yml
       with:
         restore_configuration: ${{ !contains(inputs.restore_configuration, 'false') }}
         upload_release: ${{ !contains(inputs.upload_release, 'false') }}
