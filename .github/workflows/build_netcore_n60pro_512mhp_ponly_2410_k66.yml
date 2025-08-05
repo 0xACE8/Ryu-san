@@ -43,7 +43,7 @@ env:
   PONLY2410_REPO_PATCH: ${{ secrets.PONLY2410_REPO_PATCH }}
   # netcore n60pro high-power 512mb
   NC_N60PRO_512M_HP_PONLY2410_K66_HOSTNAME: ${{ secrets.NC_N60PRO_512M_HP_PONLY2410_K66_HOSTNAME }}
-  NC_N60PRO_HP_PONLY2410_K66_CONFIG: ${{ secrets.NC_N60PRO_HP_PONLY2410_K66_CONFIG }}
+  NC_N60PRO_512M_HP_PONLY2410_K66_CONFIG: ${{ secrets.NC_N60PRO_512M_HP_PONLY2410_K66_CONFIG }}
   NC_N60PRO_HP_PONLY2410_BACKUP: ${{ secrets.NC_N60PRO_HP_PONLY2410_BACKUP }}
   # feeds source
   ADD_FEED_SOURCE: ${{ secrets.ADD_FEED_SOURCE }}
@@ -166,7 +166,7 @@ jobs:
 
     - name: Load custom configuration (カスタム構成を読み込む)
       run: |
-        ${{ secrets.NC_N60PRO_HP_PONLY2410_K66_CONFIG }}
+        ${{ secrets.NC_N60PRO_512M_HP_PONLY2410_K66_CONFIG }}
         mv .config openwrt/.config
         cd openwrt
         ${{ secrets.PONLY2410_REPO_PATCH }}
