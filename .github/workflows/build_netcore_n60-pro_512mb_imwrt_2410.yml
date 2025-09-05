@@ -172,7 +172,6 @@ jobs:
       if: (github.event.inputs.restore_configuration == 'true' && github.event.inputs.restore_configuration != 'false') || contains(github.event.action, 'restore_configuration') && !cancelled()
       working-directory: ./openwrt
       run: |
-        cd openwrt
         ${{ secrets.NC_N60PRO_512MB_IMWRT2410_BACKUP }}
 
     - name: Download package (パッケージをダウンロード)
