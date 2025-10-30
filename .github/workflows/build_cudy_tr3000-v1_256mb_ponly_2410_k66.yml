@@ -175,30 +175,65 @@ jobs:
         ${{ secrets.CD_TR3000_256MB_PONLY2410_K66_HOSTNAME }}
         ${{ secrets.ARGON_THEME_CUDY }}
 
-    - name: Boost Wi-Fi 5G signal to 25dbm (Wi-Fi 5G信号を25dbmまでブースト)
-      run: |
-        rm -f package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p
-        if [ $? -eq 0 ]; then
-          echo "已删除 package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p"
-        else
-          echo "错误：删除 package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p 失败"
-        fi
-        if [ -f "package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin" ]; then
-        mkdir -p files/lib/firmware
-        ln -sf /lib/firmware/MT7981_iPAiLNA_EEPROM.bin files/lib/firmware/e2p
-        echo "符号链接已创建"
-        ls -l files/lib/firmware/e2p || { echo "错误：符号链接创建失败"; exit 1; }
-          else
-          echo "错误：$EEPROM_FILE 不存在，无法创建符号链接"
-          exit 1
-        fi
-
     - name: Restore configuration archive (バックアップした構成アーカイブを復元する)
       if: (github.event.inputs.restore_configuration == 'true' && github.event.inputs.restore_configuration != 'false') || contains(github.event.action, 'restore_configuration') && !cancelled()
       working-directory: ./openwrt
       run: |
         rm -rd files
         ${{ secrets.CD_TR3000_256M_PONLY2410_K66_BACKUP }}
+
+    - name: Boost Wi-Fi 5G signal to 25dbm (Wi-Fi 5G信号を25dbmまでブースト)
+      run: |
+        echo "5G高功率25db设置中..."
+        rm -f "package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p"
+        if [ $? -eq 0 ]; then
+           echo "删除 e2p 成功"
+        else
+           echo "删除 e2p 失败"
+        fi
+        EEPROM_FILE=$(find "./package" -name MT7981_iPAiLNA_EEPROM.bin 2>/dev/null | head -n 1)
+        if [ -z "$EEPROM_FILE" ]; then
+            echo "未找到 EEPROM 文件"
+            exit 1
+        fi
+        EXPECTED_CONTENT=$(printf '\x2B%.0s' {1..20})
+        CURRENT_CONTENT_RAW=$(dd if="$EEPROM_FILE" bs=1 skip=$((0x445)) count=20 2>&1)
+        READ_EXIT_CODE=$?
+        printf '%s' "$CURRENT_CONTENT_RAW" | grep -E 'records (in|out)|bytes copied' | while IFS= read -r line; do
+            [ -n "$line" ] && echo "$line"
+        done
+        if [ $READ_EXIT_CODE -ne 0 ]; then
+            echo "读取EEPROM文件失败: $EEPROM_FILE"
+        fi
+        ACTUAL_EEPROM_DATA=$(printf '%s' "$CURRENT_CONTENT_RAW" | tail -c 20)
+        if [ "$ACTUAL_EEPROM_DATA" != "$EXPECTED_CONTENT" ]; then
+            DD_WRITE_OUTPUT=$(echo -n "$EXPECTED_CONTENT" | dd of="$EEPROM_FILE" bs=1 seek=$((0x445)) count=20 conv=notrunc 2>&1)
+            WRITE_EXIT_CODE=$?
+            printf '%s' "$DD_WRITE_OUTPUT" | while IFS= read -r line; do
+                [ -n "$line" ] && echo "$line"
+            done
+            if [ $WRITE_EXIT_CODE -eq 0 ]; then
+                echo "EEPROM 文件已更新: $EEPROM_FILE"
+            else
+                echo "EEPROM 文件更新失败: $EEPROM_FILE"
+            fi
+        else
+            echo "EEPROM 文件无需修改: $EEPROM_FILE"
+        fi
+        if [ -f "$EEPROM_FILE" ]; then
+           mkdir -p "./files/lib/firmware"
+           cp -f "$EEPROM_FILE" "./files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin"
+           ln -sf "MT7981_iPAiLNA_EEPROM.bin" "./files/lib/firmware/e2p"
+           if test -f "./files/lib/firmware/e2p"; then 
+               echo "符号链接已创建"
+           else 
+               echo "符号链接创建失败"
+           fi
+        else
+           echo "$EEPROM_FILE 不存在，无法创建符号链接"
+           exit 1
+        fi
+        echo "5G高功率25db设置完成"
 
     - name: Download package (パッケージをダウンロード)
       id: package
