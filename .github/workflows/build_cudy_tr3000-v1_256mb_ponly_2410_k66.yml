@@ -191,7 +191,7 @@ jobs:
         else
            echo "删除 e2p 失败"
         fi
-        EEPROM_FILE=$(find "package" -name MT7981_iPAiLNA_EEPROM.bin 2>/dev/null | head -n 1)
+        EEPROM_FILE="package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin"
         if [ -z "$EEPROM_FILE" ]; then
             echo "未找到 EEPROM 文件"
             exit 1
