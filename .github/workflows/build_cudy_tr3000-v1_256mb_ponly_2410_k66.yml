@@ -175,6 +175,24 @@ jobs:
         ${{ secrets.CD_TR3000_256MB_PONLY2410_K66_HOSTNAME }}
         ${{ secrets.ARGON_THEME_CUDY }}
 
+    - name: Boost Wi-Fi 5G signal to 25dbm (Wi-Fi 5G信号を25dbmまでブースト)
+      run: |
+        rm -f package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p
+        if [ $? -eq 0 ]; then
+          echo "已删除 package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p"
+        else
+          echo "错误：删除 package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/e2p 失败"
+        fi
+        if [ -f "package/mtk/drivers/mt_wifi/files/mt7981-default-eeprom/MT7981_iPAiLNA_EEPROM.bin" ]; then
+        mkdir -p files/lib/firmware
+        ln -sf /lib/firmware/MT7981_iPAiLNA_EEPROM.bin files/lib/firmware/e2p
+        echo "符号链接已创建"
+        ls -l files/lib/firmware/e2p || { echo "错误：符号链接创建失败"; exit 1; }
+          else
+          echo "错误：$EEPROM_FILE 不存在，无法创建符号链接"
+          exit 1
+        fi
+
     - name: Restore configuration archive (バックアップした構成アーカイブを復元する)
       if: (github.event.inputs.restore_configuration == 'true' && github.event.inputs.restore_configuration != 'false') || contains(github.event.action, 'restore_configuration') && !cancelled()
       working-directory: ./openwrt
