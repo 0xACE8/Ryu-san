@@ -185,6 +185,7 @@ jobs:
         ${{ secrets.CD_TR3000_256M_PONLY2410_K66_BACKUP }}
 
     - name: Boost Wi-Fi 5G signal to 25dbm (Wi-Fi 5G信号を25dbmまでブースト)
+      working-directory: ./openwrt
       run: |
         echo "5G高功率25db设置中..."
     
