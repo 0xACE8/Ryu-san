@@ -181,6 +181,7 @@ jobs:
         EOF
         mv .config openwrt/.config
         cd openwrt
+        sed -i '/"wan" "WAN" "blue:wan" "eth1" "link"/ a\\tucidef_set_led_netdev "wlan5g" "WLAN_5G" "blue:wlan" ""rax0" "link"\n\tucidef_set_led_usbport "usb" "USB" "blue:usb" "usb2-port1"' target/linux/mediatek/filogic/base-files/etc/board.d/01_leds
         ${{ secrets.PONLY2410_REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
         ${{ secrets.NC_N60PRO_512MB_HP_PONLY2410_K66_HOSTNAME }}
