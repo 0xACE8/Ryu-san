@@ -178,9 +178,11 @@ jobs:
         CONFIG_PACKAGE_luci-app-dockerman=y
         CONFIG_PACKAGE_luci-i18n-dockerman-zh-cn=y
         CONFIG_PACKAGE_luci-lib-docker=y
+        CONFIG_PACKAGE_kmod-mtd-rw=y
         EOF
         mv .config openwrt/.config
         cd openwrt
+        sed -i 's/gpio-export,output = <1>;/gpio-export,output = <0>;/g' target/linux/mediatek/dts/mt7981b-cudy-tr3000-v1.dtsi
         ${{ secrets.PONLY2410_REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
         ${{ secrets.CD_TR3000_512MB_PONLY2410_K66_HOSTNAME }}
