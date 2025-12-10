@@ -73,18 +73,27 @@ jobs:
       contents: write
 
     steps:
-    - name: Sync Plugin Source
-      uses: convictional/trigger-workflow-and-wait@v1.6.5
-      with:
-        owner: 0xACE8
-        repo: Ryusan-package
-        github_token: ${{ secrets.ACCESS_TOKEN }}
-        workflow_file_name: sync.yml
-        ref: main
-        wait_interval: 10
-        propagate_failure: true
-        trigger_workflow: true
-        wait_workflow: true
+    - name: Sync and Wait for Plugin Repo
+      env:
+        GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        PLUGIN_REPO: "0xACE8/Ryusan-package"
+        WORKFLOW_FILE: "sync.yml"
+        REF: "main"
+      run: |
+        echo "🚀 Triggering workflow in $PLUGIN_REPO..."
+        gh workflow run "$WORKFLOW_FILE" --repo "$PLUGIN_REPO" --ref "$REF"
+
+        echo "⏳ Waiting for workflow to start..."
+        RUN_ID=$(gh run list --workflow "$WORKFLOW_FILE" --repo "$PLUGIN_REPO" --limit 1 --json databaseId --jq '.[0].databaseId')
+
+        if [ -z "$RUN_ID" ] || [ "$RUN_ID" == "null" ]; then
+          echo "❌ Error: Could not find the triggered run. Is the workflow name correct?"
+          exit 1
+        fi
+
+        echo "✅ Found Run ID: $RUN_ID. Watching..."
+        gh run watch "$RUN_ID" --repo "$PLUGIN_REPO" --exit-status
+        echo "🎉 Plugin repo sync finished successfully!"
 
     - name: Checkout (チェックアウト)
       uses: actions/checkout@main
