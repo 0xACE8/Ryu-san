@@ -153,6 +153,7 @@ jobs:
         git clone $REPO_PONLY2410_K66_URL -b $REPO_PONLY2410_K66_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
+        sed -i 's/gpio-export,output = <1>;/gpio-export,output = <0>;/g' target/linux/mediatek/dts/mt7981b-cudy-tr3000-v1.dtsi
         ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_SUPPORT }}
         echo "CUDY_TR3000_128MB_PONLY2410_K66_SUPPORT done."
         ${{ secrets.ADD_FEED_SOURCE }}
