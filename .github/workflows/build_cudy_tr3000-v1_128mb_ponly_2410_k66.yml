@@ -73,69 +73,6 @@ jobs:
       contents: write
 
     steps:
-    - name: Sync and Wait for Plugin Repo
-      env:
-        GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        PLUGIN_REPO: "0xACE8/Ryusan-package"
-        WORKFLOW_FILE: "sync.yml"
-        REF: "main"
-      run: |
-        echo "🚀 Triggering workflow in $PLUGIN_REPO..."
-        gh workflow run "$WORKFLOW_FILE" --repo "$PLUGIN_REPO" --ref "$REF"
-
-        echo "⏳ Waiting for workflow to start..."
-        RUN_ID=$(gh run list --workflow "$WORKFLOW_FILE" --repo "$PLUGIN_REPO" --limit 1 --json databaseId --jq '.[0].databaseId')
-
-        if [ -z "$RUN_ID" ] || [ "$RUN_ID" == "null" ]; then
-          echo "❌ Error: Could not find the triggered run. Is the workflow name correct?"
-          exit 1
-        fi
-
-        echo "✅ Found Run ID: $RUN_ID. Watching..."
-        gh run watch "$RUN_ID" --repo "$PLUGIN_REPO" --exit-status
-        echo "🎉 Plugin repo sync finished successfully!"
-
-#    - name: Sync and Wait for Plugin Repo (Robust Mode)
-#      env:
-#        GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-#        PLUGIN_REPO: "0xACE8/你的插件仓库名"  # ⚠️ 别忘了改这里
-#        WORKFLOW_FILE: "sync.yml"            # ⚠️ 别忘了改这里
-#        REF: "main"
-#      run: |
-#        echo "🚀 Sending signal to Chef (Triggering workflow)..."
-
-#        if ! gh workflow run "$WORKFLOW_FILE" --repo "$PLUGIN_REPO" --ref "$REF"; then
-#          echo "❌ Error: Failed to trigger the workflow. Is the file name correct?"
-#          exit 1
-#        fi
-          
-#        echo "🕵️‍♂️ Tracking the Chef (Waiting for Run ID)..."
-          
-#        FOUND_ID=""
-#        for i in {1..12}; do
-#          echo "   Attempt $i/12: Checking for active runs..."
-#          sleep 5
-
-#          RUN_ID=$(gh run list --workflow "$WORKFLOW_FILE" --repo "$PLUGIN_REPO" --limit 1 --json databaseId,status --jq 'map(select(.status != "completed")) | .[0].databaseId')
-            
-#          if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ]; then
-#            FOUND_ID=$RUN_ID
-#            echo "✅ Caught the Chef! Run ID: $FOUND_ID"
-#            break
-#          fi
-#        done
-          
-#        if [ -z "$FOUND_ID" ]; then
-#          echo "❌ Error: Chef is gone! (Timed out waiting for Run ID creation)"
-#          echo "   Possible reasons: GitHub API lag, or the workflow failed to start immediately."
-#          exit 1
-#        fi
-          
-#        echo "👀 Watching Chef cook..."
-#        gh run watch "$FOUND_ID" --repo "$PLUGIN_REPO" --exit-status
-          
-#        echo "🍽️ Dish is ready! (Plugin sync complete)"
-
     - name: Checkout (チェックアウト)
       uses: actions/checkout@main
       with:
@@ -167,6 +104,10 @@ jobs:
         echo "---------------------ハードディスク情報---------------------"
         echo "ハードディスク容量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
 
+    - name: Setup Git Credentials
+      run: |
+        git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
+
     - name: Initialization environment (初期化環境)
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -182,10 +123,6 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-
-    - name: Setup Git Credentials
-      run: |
-        git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
   
     - name: Clone source code (ソースコードのクローン)
       working-directory: /workdir
