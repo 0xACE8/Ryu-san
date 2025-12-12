@@ -38,9 +38,9 @@ on:
 
 env:
   # immortalwrt 2410
-  PONLY2410_REPO_URL: ${{ secrets.PONLY2410_REPO_URL }}
+  PONLY2410_K66_REPO_URL: ${{ secrets.PONLY2410_K66_REPO_URL }}
   PONLY2410_K66_REPO_BRANCH: ${{ secrets.PONLY2410_K66_REPO_BRANCH }}
-  PONLY2410_REPO_PATCH: ${{ secrets.PONLY2410_REPO_PATCH }}
+  PONLY2410_K66_REPO_PATCH: ${{ secrets.PONLY2410_K66_REPO_PATCH }}
   # cudy tr3000 v1 modded spi nand 128m
   CD_TR3000_128MB_PONLY2410_K66_HOSTNAME: ${{ secrets.CD_TR3000_128MB_PONLY2410_K66_HOSTNAME }}
   CD_TR3000_128MB_PONLY2410_K66_CONFIG: ${{ secrets.CD_TR3000_128MB_PONLY2410_K66_CONFIG }}
@@ -133,7 +133,7 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone $PONLY2410_REPO_URL -b $PONLY2410_K66_REPO_BRANCH openwrt
+        git clone $PONLY2410_K66_REPO_URL -b $PONLY2410_K66_REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
         ${{ secrets.ADD_FEED_SOURCE }}
@@ -146,7 +146,7 @@ jobs:
 
     - name: Generate Variables (変数を生成する)
       run: |
-        SOURCE_REPO="$(echo $PONLY2410_REPO_URL | awk -F '/' '{print $(NF)}')"
+        SOURCE_REPO="$(echo $PONLY2410_K66_REPO_URL | awk -F '/' '{print $(NF)}')"
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
 
     - name: Cache Toolchain (キャッシュツールチェーン)
@@ -175,7 +175,7 @@ jobs:
         mv .config openwrt/.config
         cd openwrt
         sed -i 's/gpio-export,output = <1>;/gpio-export,output = <0>;/g' target/linux/mediatek/dts/mt7981b-cudy-tr3000-v1.dtsi
-        ${{ secrets.PONLY2410_REPO_PATCH }}
+        ${{ secrets.PONLY2410_K66_REPO_PATCH }}
         ${{ secrets.FIRMWARE_DIY_SCRIPT }}
         ${{ secrets.CD_TR3000_128MB_PONLY2410_K66_HOSTNAME }}
         ${{ secrets.ARGON_THEME_CUDY }}
